@@ -1,0 +1,73 @@
+/* ── Edge Setting 主题色系 ──────────────────────────────── */
+:root {
+  --bg:               #f0f5ff;
+  --bg-white:         #ffffff;
+  --bg-card:          #ffffff;
+
+  --primary:          #42aaf5;
+  --primary-light:    #2196e8;
+  --primary-soft:     rgba(66, 170, 245, 0.10);
+  --primary-border:   rgba(66, 170, 245, 0.30);
+
+  --text:             #1a1c3a;
+  --sub-text:         #5b6080;
+  --muted-text:       #9ca3af;
+
+  --success:          #10b981;
+  --success-soft:     rgba(16, 185, 129, 0.10);
+  --success-border:   rgba(16, 185, 129, 0.25);
+
+  --warning:          #f59e0b;
+  --warning-soft:     rgba(245, 158, 11, 0.10);
+  --warning-border:   rgba(245, 158, 11, 0.28);
+
+  --danger:           #ef4444;
+  --danger-soft:      rgba(239, 68, 68, 0.08);
+  --danger-border:    rgba(239, 68, 68, 0.22);
+
+  --system:           #8b5cf6;
+
+  --border:           rgba(66, 170, 245, 0.20);
+  --border-strong:    rgba(66, 170, 245, 0.35);
+  --border-subtle:    rgba(66, 170, 245, 0.12);
+
+  --shadow:           rgba(66, 170, 245, 0.12);
+
+  --radius-sm:  8px;
+  --radius-md:  14px;
+  --radius-lg:  18px;
+}
+
+/* ── 重置 & 基础 ─────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body, #app {
+  height: 100%;
+  font-family: 'DM Sans', 'PingFang SC', 'Noto Sans SC', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  /* 基础字号调大，手机 / Pad 更清晰 */
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── 滚动条 ──────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+/* ── Vant pull-refresh 高度修复 ──────────────────────────── */
+.van-pull-refresh { height: 100%; }
+
+/* ── 动画 ────────────────────────────────────────────────── */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: .25; }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
