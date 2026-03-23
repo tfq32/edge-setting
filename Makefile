@@ -14,11 +14,11 @@ all: build
 build: build-frontend build-backend
 
 build-frontend:
-	@echo "▶ 构建前端..."
-	cd frontend && npm install && npm run build
+	@echo "> build frontend..."
+	cd frontend && pnpm install && pnpm run build
 
 build-backend:
-	@echo "▶ 构建后端 ($(GOOS)/$(GOARCH))..."
+	@echo "> build backend ($(GOOS)/$(GOARCH))..."
 	cd backend && go build -ldflags "$(LDFLAGS)" -o ../dist/edge-setting ./cmd/server
 
 # 交叉编译全平台
@@ -34,29 +34,12 @@ release:
 	done
 	@echo "✓ 编译完成，产物在 dist/"
 
-# ── 测试 ──────────────────────────────────────────────────
-test: test-backend test-frontend
-
-test-backend:
-	@echo "▶ 运行后端单元测试..."
-	cd backend && go test -v -race -count=1 ./internal/... 2>&1
-
-test-frontend:
-	@echo "▶ 运行前端单元测试..."
-	cd frontend && npm install && npx vitest run --reporter=verbose 2>&1
-
-test-coverage:
-	@echo "▶ 后端覆盖率报告..."
-	cd backend && go test -coverprofile=coverage.out ./internal/...
-	cd backend && go tool cover -html=coverage.out -o coverage.html
-	@echo "✓ 覆盖率报告: backend/coverage.html"
-
 # ── 本地开发 ──────────────────────────────────────────────
 dev-backend:
 	cd backend && CONFIG_PATH=configs/config.yaml go run ./cmd/server
 
 dev-frontend:
-	cd frontend && npm run dev
+	cd frontend && pnpm run dev
 
 # ── 清理 ──────────────────────────────────────────────────
 clean:
