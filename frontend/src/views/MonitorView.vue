@@ -124,7 +124,8 @@ const memRows = computed(() => {
 
 const chartOption = computed(() => ({
   grid: { top:8, right:8, bottom:28, left:46 },
-  xAxis: { type:'time',
+  xAxis: { 
+    type: 'time' as const,
     axisLabel:{
       fontSize:11, color:'#9ca3af',
       // 1h 约 20 个点，自动限制最多 5 个刻度避免重叠
@@ -137,16 +138,22 @@ const chartOption = computed(() => ({
     axisLine:{show:false}, splitLine:{show:false},
     maxInterval: activeRange.value === '1h' ? 3600000/4 : activeRange.value === '6h' ? 3600000*1.5 : 3600000*6,
   },
-  yAxis: { type:'value', min:0, max:100,
+  yAxis: { 
+    type: 'value' as const, 
+    min:0, max:100,
     axisLabel:{fontSize:11,color:'#9ca3af',formatter:'{value}%'},
-    splitLine:{lineStyle:{color:'rgba(66,170,245,0.08)'}} },
-  series:[{ type:'line', smooth:true, symbol:'none',
+    splitLine:{lineStyle:{color:'rgba(66,170,245,0.08)'}} 
+  },
+  series:[{ 
+    type: 'line' as const, 
+    smooth:true, 
+    symbol:'none',
     data: histData.value.map(d=>[d.ts,d.val]),
     lineStyle:{color:'var(--primary)',width:2.5},
-    areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,
+    areaStyle:{color:{type:'linear' as const,x:0,y:0,x2:0,y2:1,
       colorStops:[{offset:0,color:'rgba(66,170,245,0.28)'},{offset:1,color:'rgba(66,170,245,0)'}]}},
   }],
-  tooltip:{trigger:'axis',formatter:(p:any)=>`${new Date(p[0].value[0]).toLocaleTimeString()}: ${p[0].value[1].toFixed(1)}%`},
+  tooltip:{trigger:'axis' as const,formatter:(p:any)=>`${new Date(p[0].value[0]).toLocaleTimeString()}: ${p[0].value[1].toFixed(1)}%`},
 }))
 
 watch(() => metrics.latest, (s) => {

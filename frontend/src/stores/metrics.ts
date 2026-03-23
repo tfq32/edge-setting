@@ -3,23 +3,23 @@ import { ref } from 'vue'
 import { systemApi } from '@/api'
 
 export interface Snapshot {
-  ts:       number
-  cpu:      number
-  cpu_cores: number[]
-  mem_used:  number
-  mem_total: number
-  mem_pct:   number
-  swap_used: number
+  ts:         number
+  cpu:        number
+  cpu_cores:  number[]
+  mem_used:   number
+  mem_total:  number
+  mem_pct:    number
+  swap_used:  number
   swap_total: number
-  disk_pct:  number
-  disk_read: number
+  disk_pct:   number
+  disk_read:  number
   disk_write: number
-  net_in:    number
-  net_out:   number
-  load1:     number
-  load5:     number
-  load15:    number
-  uptime:    number
+  net_in:     number
+  net_out:    number
+  load1:      number
+  load5:      number
+  load15:     number
+  uptime:     number
 }
 
 export const useMetricsStore = defineStore('metrics', () => {
@@ -38,9 +38,8 @@ export const useMetricsStore = defineStore('metrics', () => {
   }
 
   function connectWS() {
-    const token = localStorage.getItem('edge_token') ?? ''
     const proto = location.protocol === 'https:' ? 'wss' : 'ws'
-    const url   = `${proto}://${location.host}/api/v1/system/metrics/ws?token=${token}`
+    const url   = `${proto}://${location.host}/api/v1/system/metrics/ws`
 
     wsStatus.value = 'connecting'
     ws = new WebSocket(url)
@@ -63,7 +62,6 @@ export const useMetricsStore = defineStore('metrics', () => {
 
     ws.onclose = () => {
       wsStatus.value = 'closed'
-      // 指数退避重连
       retryTimer = setTimeout(() => {
         retryDelay = Math.min(retryDelay * 2, 30000)
         connectWS()

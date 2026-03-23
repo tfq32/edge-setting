@@ -20,15 +20,7 @@ export const systemApi = {
   history:  (type: string, range: string) => http.get('/metrics/history', { params: { type, range } }),
 }
 
-// ── 微应用（只有列表 + 启停重启） ─────────────────────────
+// ── 微应用（只读，仅列表） ─────────────────────────────────
 export const appsApi = {
-  list:    ()            => http.get('/apps'),
-  start:   (id: string)  => http.post(`/apps/${id}/start`),
-  stop:    (id: string)  => http.post(`/apps/${id}/stop`),
-  restart: (id: string)  => http.post(`/apps/${id}/restart`),
-}
-
-// ── 审计 ──────────────────────────────────────────────────
-export const auditApi = {
-  query: (params?: Record<string, string>) => http.get('/audit', { params }),
+  list: () => http.get('/apps'),
 }

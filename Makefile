@@ -1,10 +1,5 @@
 .PHONY: all build build-backend build-frontend test test-backend test-frontend clean dev
 
-# ── 版本 ──────────────────────────────────────────────────
-VERSION  ?= $(shell git describe --tags --always 2>/dev/null || echo "dev")
-FE_VER   ?= $(VERSION)
-LDFLAGS   = -X main.BuildVersion=$(VERSION) -X main.BuildFE=$(FE_VER) -s -w
-
 # ── 目标平台 ──────────────────────────────────────────────
 PLATFORMS = linux/amd64 linux/arm64
 
@@ -19,7 +14,7 @@ build-frontend:
 
 build-backend:
 	@echo "> build backend ($(GOOS)/$(GOARCH))..."
-	cd backend && go build -ldflags "$(LDFLAGS)" -o ../dist/edge-setting ./cmd/server
+	cd backend && go build -ldflags "-s -w" -o ./dist/edge-setting ./cmd/server
 
 # 交叉编译全平台
 release:
@@ -27,12 +22,29 @@ release:
 	@for platform in $(PLATFORMS); do \
 		os=$$(echo $$platform | cut -d/ -f1); \
 		arch=$$(echo $$platform | cut -d/ -f2); \
-		echo "▶ 编译 $$os/$$arch ..."; \
+		echo "> compile $$os/$$arch ..."; \
 		cd backend && GOOS=$$os GOARCH=$$arch CGO_ENABLED=0 \
-			go build -ldflags "$(LDFLAGS)" -o ../dist/edge-setting-$$os-$$arch ./cmd/server; \
+			go build -ldflags "-s -w" -o ../dist/edge-setting-$$os-$$arch ./cmd/server; \
 		cd ..; \
 	done
-	@echo "✓ 编译完成，产物在 dist/"
+	@echo "✓ done, binaries in dist/"
+
+# ── 测试 ──────────────────────────────────────────────────
+test: test-backend test-frontend
+
+test-backend:
+	@echo "> run backend tests..."
+	cd backend && go test -v -race -count=1 ./internal/...
+
+test-frontend:
+	@echo "> run frontend tests..."
+	cd frontend && pnpm install && pnpm test
+
+test-coverage:
+	@echo "> backend coverage..."
+	cd backend && go test -coverprofile=coverage.out ./internal/...
+	cd backend && go tool cover -html=coverage.out -o coverage.html
+	@echo "✓ report: backend/coverage.html"
 
 # ── 本地开发 ──────────────────────────────────────────────
 dev-backend:
@@ -44,9 +56,8 @@ dev-frontend:
 # ── 清理 ──────────────────────────────────────────────────
 clean:
 	rm -rf dist/ frontend/dist/ backend/coverage.out backend/coverage.html
-	@echo "✓ 清理完成"
+	@echo "✓ cleaned"
 
-# ── 帮助 ──────────────────────────────────────────────────
 help:
 	@echo ""
 	@echo "  make build          构建前端 + 后端"
@@ -54,9 +65,6 @@ help:
 	@echo "  make build-frontend 仅构建前端"
 	@echo "  make release        交叉编译 amd64/arm64"
 	@echo "  make test           运行所有测试"
-	@echo "  make test-backend   仅运行后端测试"
-	@echo "  make test-frontend  仅运行前端测试"
-	@echo "  make test-coverage  生成覆盖率报告"
 	@echo "  make dev-backend    启动后端开发服务"
 	@echo "  make dev-frontend   启动前端开发服务"
 	@echo "  make clean          清理构建产物"

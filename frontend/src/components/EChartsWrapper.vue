@@ -7,7 +7,7 @@ import { ref, onMounted, onUnmounted, watch } from 'vue'
 import * as echarts from 'echarts'
 
 const props = defineProps<{
-  option: object
+  option: echarts.EChartsOption
   height?: string
 }>()
 

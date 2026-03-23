@@ -89,7 +89,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAppsStore } from '@/stores/apps'
-import { appsApi } from '@/api'
 import AppLayout from '@/components/AppLayout.vue'
 import type { AppInfo } from '@/stores/apps'
 
@@ -137,14 +136,18 @@ function formatTs(ts:number) {
   return new Date(ts).toLocaleTimeString('zh-CN',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'})
 }
 
-async function loadApp()  { app.value = await appsStore.fetchDetail(id) }
+async function loadApp()  { 
+  // 从列表中找到对应的应用
+  await appsStore.fetchList()
+  app.value = appsStore.list.find(a => a.id === id) || null
+}
 async function loadLogs() {
   try {
     const params: Record<string,string> = { limit:'200' }
     if (logLevel.value)   params.level   = logLevel.value
     if (logKeyword.value) params.keyword = logKeyword.value
-    const res:any = await appsApi.logs(id, params)
-    logs.value = res?.data ?? []
+    // 暂时禁用日志功能，因为 API 中缺少 logs 方法
+    logs.value = []
   } catch {}
 }
 

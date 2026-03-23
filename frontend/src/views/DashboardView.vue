@@ -12,11 +12,11 @@
         <div class="content">
           <!-- 2×2 指标卡 -->
           <div class="metric-grid">
-            <MetricCard label="CPU 占用" :pct="snap?.cpu ?? 0" :warn="80" :danger="90"
+            <MetricCard label="CPU 占用" :value="snap?.cpu ?? 0" :pct="snap?.cpu ?? 0" :warn="80" :danger="90"
               @click="$router.push('/monitor')" />
-            <MetricCard label="内存使用" :pct="snap?.mem_pct ?? 0" :warn="85" :danger="92"
+            <MetricCard label="内存使用" :value="snap?.mem_pct ?? 0" :pct="snap?.mem_pct ?? 0" :warn="85" :danger="92"
               @click="$router.push('/monitor')" />
-            <MetricCard label="磁盘使用" :pct="snap?.disk_pct ?? 0" :warn="85" :danger="90"
+            <MetricCard label="磁盘使用" :value="snap?.disk_pct ?? 0" :pct="snap?.disk_pct ?? 0" :warn="85" :danger="90"
               @click="$router.push('/monitor')" />
             <MetricCard label="网络流入" :pct="Math.min((snap?.net_in??0)/1048576*10,100)"
               :value="snap?.net_in??0" unit=" MB/s" :warn="80" :danger="95"
