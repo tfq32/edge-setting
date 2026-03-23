@@ -4,23 +4,12 @@ server:
   cert_file: ""
   key_file: ""
 
-auth:
-  tokens:
-    - token: "readonly-token-change-me"
-      permission: readonly
-    - token: "readwrite-token-change-me"
-      permission: readwrite
-
 data:
   dir: /var/lib/edge-setting
   metrics_retain_days: 7
-  log_max_size_mb: 500
 
 log:
   level: info
-  format: json
 
 vsoa:
   ms_address: "vsoa://localhost:3000"
-  connect_timeout: 5s
-  retry_max_interval: 30s

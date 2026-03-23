@@ -14,7 +14,7 @@ build-frontend:
 
 build-backend:
 	@echo "> build backend ($(GOOS)/$(GOARCH))..."
-	cd backend && go build -ldflags "-s -w" -o ./dist/edge-setting ./cmd/server
+	cd backend && go mod tidy && go build -ldflags "-s -w" -o ./dist/edge-setting ./cmd/server
 
 # 交叉编译全平台
 release:
@@ -48,7 +48,7 @@ test-coverage:
 
 # ── 本地开发 ──────────────────────────────────────────────
 dev-backend:
-	cd backend && CONFIG_PATH=configs/config.yaml go run ./cmd/server
+	cd backend && go mod tidy && CONFIG_PATH=configs/config.yaml go run ./cmd/server
 
 dev-frontend:
 	cd frontend && pnpm run dev
