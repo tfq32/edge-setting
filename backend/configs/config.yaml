@@ -1,11 +1,11 @@
 server:
-  port: 8080
+  port: 10000
   https: false
   cert_file: ""
   key_file: ""
 
 data:
-  dir: /var/lib/edge-setting
+  dir: /var/opt/edge-setting
   metrics_retain_days: 7
 
 log:
