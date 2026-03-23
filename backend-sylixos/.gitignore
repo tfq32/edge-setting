@@ -1,0 +1,15 @@
+# Binaries
+go-ser
+*.exe
+
+# Database
+*.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
