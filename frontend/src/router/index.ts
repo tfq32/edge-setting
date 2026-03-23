@@ -17,11 +17,6 @@ const routes = [
     meta: { title: '微应用' }
   },
   {
-    path: '/apps/:id',
-    component: () => import('@/views/AppDetailView.vue'),
-    meta: { title: '应用详情' }
-  },
-  {
     path: '/about',
     component: () => import('@/views/AboutView.vue'),
     meta: { title: '系统信息' }

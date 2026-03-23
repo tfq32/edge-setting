@@ -8,47 +8,29 @@ import (
 	"go.uber.org/zap"
 )
 
-// SetupRouter 配置路由
+// SetupRouter 配置路由（全部只读，无认证）
 func SetupRouter(h *Handler) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 
-	// 全局中间件
 	r.Use(recoveryMiddleware(h.Log))
 	r.Use(corsMiddleware())
 	r.Use(loggerMiddleware(h.Log))
 
-	// 健康检查
 	r.GET("/health", h.Health)
 
-	// API v1（无需认证）
 	v1 := r.Group("/api/v1")
 	{
-		// 系统信息
-		v1.GET("/system/info", h.SystemInfo)
-		v1.GET("/system/metrics", h.MetricsSnapshot)
+		v1.GET("/system/info",       h.SystemInfo)
+		v1.GET("/system/metrics",    h.MetricsSnapshot)
 		v1.GET("/system/metrics/ws", h.MetricsWS)
-		v1.GET("/metrics/history", h.MetricsHistory)
-		v1.GET("/version", h.Version)
-
-		// 微应用
-		v1.GET("/apps", h.AppList)
-		v1.GET("/apps/:id", h.AppDetail)
-		v1.GET("/apps/:id/logs", h.AppLogsHistory)
-		v1.GET("/apps/:id/logs/ws", h.AppLogsWS)
-		v1.GET("/apps/:id/logs/export", h.AppLogsExport)
-		v1.POST("/apps/:id/start", h.AppStart)
-		v1.POST("/apps/:id/stop", h.AppStop)
-		v1.POST("/apps/:id/restart", h.AppRestart)
-
-		// 审计日志
-		v1.GET("/audit", h.AuditQuery)
+		v1.GET("/metrics/history",   h.MetricsHistory)
+		v1.GET("/apps",              h.AppList)
 	}
 
 	return r
 }
 
-// recoveryMiddleware panic 恢复
 func recoveryMiddleware(log *zap.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {
@@ -63,12 +45,11 @@ func recoveryMiddleware(log *zap.Logger) gin.HandlerFunc {
 	}
 }
 
-// corsMiddleware CORS 头
 func corsMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Header("Access-Control-Allow-Origin", "*")
-		c.Header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Authorization,Content-Type")
+		c.Header("Access-Control-Allow-Methods", "GET,OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "Content-Type")
 		if c.Request.Method == http.MethodOptions {
 			c.AbortWithStatus(http.StatusNoContent)
 			return
@@ -77,7 +58,6 @@ func corsMiddleware() gin.HandlerFunc {
 	}
 }
 
-// loggerMiddleware 请求日志
 func loggerMiddleware(log *zap.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()

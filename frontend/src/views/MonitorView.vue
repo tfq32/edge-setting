@@ -158,13 +158,33 @@ watch(() => metrics.latest, (s) => {
 
 function coreColor(v:number) { return v>85?'var(--danger)':v>60?'var(--warning)':'var(--primary)' }
 async function loadHistory() {
+  const rangeMs: Record<string,number> = { '1h':3600000, '6h':21600000, '24h':86400000, '7d':604800000 }
+  const ms = rangeMs[activeRange.value] ?? 3600000
+  const now = Date.now()
+
   try {
     const res:any = await systemApi.history(activeTab.value, activeRange.value)
-    if (!res?.data) return
-    histData.value = res.data.map((r:any)=>({
-      ts:r.ts, val:({cpu:r.cpu,mem:r.mem_pct,disk:r.disk_pct,net:r.net_in/1024})[activeTab.value]??r.cpu,
+    const rows: {ts:number;val:number}[] = (res?.data ?? []).map((r:any) => ({
+      ts: r.ts,
+      val: ({cpu:r.cpu, mem:r.mem_pct, disk:r.disk_pct, net:r.net_in/1024})[activeTab.value] ?? r.cpu,
     }))
-  } catch {}
+
+    if (rows.length === 0) {
+      // 数据库中无数据：绘制起止两个 0% 点，使图表显示空白平线而非空图
+      histData.value = [
+        { ts: now - ms, val: 0 },
+        { ts: now,      val: 0 },
+      ]
+    } else {
+      histData.value = rows
+    }
+  } catch {
+    // 请求失败也绘制零线
+    histData.value = [
+      { ts: now - ms, val: 0 },
+      { ts: now,      val: 0 },
+    ]
+  }
 }
 function switchTab(key:string) { activeTab.value = key; histData.value = []; loadHistory() }
 function changeRange(r:string) { activeRange.value = r; loadHistory() }

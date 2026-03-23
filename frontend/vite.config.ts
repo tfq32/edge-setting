@@ -13,11 +13,7 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/api': { 
-        target: 'http://localhost:8080', 
-        changeOrigin: true,
-        ws: true  // 启用 WebSocket 代理支持
-      },
+      '/api': { target: 'http://localhost:8080', changeOrigin: true },
       '/health': { target: 'http://localhost:8080', changeOrigin: true }
     }
   },

@@ -25,24 +25,7 @@ type MetricRow struct {
 	NetOut    uint64  `json:"net_out"`
 }
 
-// LogRow 应用日志记录
-type LogRow struct {
-	ID        int64  `json:"id"`
-	AppID     string `json:"app_id"`
-	Level     string `json:"level"`
-	Content   string `json:"content"`
-	Timestamp int64  `json:"ts"`
-}
 
-// AuditRow 审计日志记录
-type AuditRow struct {
-	ID        int64  `json:"id"`
-	Token     string `json:"token"`
-	AppID     string `json:"app_id"`
-	Action    string `json:"action"`
-	Result    string `json:"result"`
-	Timestamp int64  `json:"ts"`
-}
 
 // Open 打开或创建数据库
 func Open(dir string) (*DB, error) {
@@ -75,24 +58,7 @@ CREATE TABLE IF NOT EXISTS metrics (
 );
 CREATE INDEX IF NOT EXISTS idx_metrics_ts ON metrics(ts);
 
-CREATE TABLE IF NOT EXISTS app_logs (
-	id        INTEGER PRIMARY KEY AUTOINCREMENT,
-	app_id    TEXT NOT NULL,
-	level     TEXT,
-	content   TEXT,
-	ts        INTEGER NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_logs_app_ts ON app_logs(app_id, ts);
 
-CREATE TABLE IF NOT EXISTS audit_logs (
-	id     INTEGER PRIMARY KEY AUTOINCREMENT,
-	token  TEXT,
-	app_id TEXT,
-	action TEXT,
-	result TEXT,
-	ts     INTEGER NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_audit_ts ON audit_logs(ts);
 `
 	_, err := s.db.Exec(ddl)
 	return err
@@ -128,96 +94,16 @@ func (s *DB) QueryMetrics(metricType string, from, to int64) ([]MetricRow, error
 	return result, nil
 }
 
-// InsertLog 写入一条应用日志
-func (s *DB) InsertLog(r LogRow) error {
-	_, err := s.db.Exec(
-		`INSERT INTO app_logs(app_id,level,content,ts) VALUES(?,?,?,?)`,
-		r.AppID, r.Level, r.Content, r.Timestamp,
-	)
-	return err
-}
 
-// QueryLogs 查询历史日志
-func (s *DB) QueryLogs(appID, keyword, level string, from, to int64, limit int) ([]LogRow, error) {
-	query := `SELECT id,app_id,level,content,ts FROM app_logs WHERE app_id=? AND ts>=? AND ts<=?`
-	args := []interface{}{appID, from, to}
-	if level != "" {
-		query += " AND level=?"
-		args = append(args, level)
-	}
-	if keyword != "" {
-		query += " AND content LIKE ?"
-		args = append(args, "%"+keyword+"%")
-	}
-	query += " ORDER BY ts DESC LIMIT ?"
-	args = append(args, limit)
 
-	rows, err := s.db.Query(query, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var result []LogRow
-	for rows.Next() {
-		var r LogRow
-		if err := rows.Scan(&r.ID, &r.AppID, &r.Level, &r.Content, &r.Timestamp); err != nil {
-			continue
-		}
-		result = append(result, r)
-	}
-	return result, nil
-}
 
-// InsertAudit 写入审计日志
-func (s *DB) InsertAudit(r AuditRow) error {
-	_, err := s.db.Exec(
-		`INSERT INTO audit_logs(token,app_id,action,result,ts) VALUES(?,?,?,?,?)`,
-		r.Token, r.AppID, r.Action, r.Result, r.Timestamp,
-	)
-	return err
-}
-
-// QueryAudit 查询审计日志
-func (s *DB) QueryAudit(op string, from, to int64, limit int) ([]AuditRow, error) {
-	query := `SELECT id,token,app_id,action,result,ts FROM audit_logs WHERE ts>=? AND ts<=?`
-	args := []interface{}{from, to}
-	if op != "" {
-		query += " AND action=?"
-		args = append(args, op)
-	}
-	query += " ORDER BY ts DESC LIMIT ?"
-	args = append(args, limit)
-
-	rows, err := s.db.Query(query, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var result []AuditRow
-	for rows.Next() {
-		var r AuditRow
-		if err := rows.Scan(&r.ID, &r.Token, &r.AppID, &r.Action, &r.Result, &r.Timestamp); err != nil {
-			continue
-		}
-		result = append(result, r)
-	}
-	return result, nil
-}
 
 // Cleanup 清理过期数据
-func (s *DB) Cleanup(metricsRetainDays, logsRetainDays, auditRetainDays int) error {
+func (s *DB) Cleanup(metricsRetainDays int) error {
 	now := time.Now().UnixMilli()
 	cutMetrics := now - int64(metricsRetainDays)*86400*1000
-	cutLogs := now - int64(logsRetainDays)*86400*1000
-	cutAudit := now - int64(auditRetainDays)*86400*1000
 
 	if _, err := s.db.Exec(`DELETE FROM metrics WHERE ts<?`, cutMetrics); err != nil {
-		return err
-	}
-	if _, err := s.db.Exec(`DELETE FROM app_logs WHERE ts<?`, cutLogs); err != nil {
-		return err
-	}
-	if _, err := s.db.Exec(`DELETE FROM audit_logs WHERE ts<?`, cutAudit); err != nil {
 		return err
 	}
 	return nil

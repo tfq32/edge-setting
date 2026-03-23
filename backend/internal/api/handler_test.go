@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/edge-setting/backend/internal/api"
 	"github.com/edge-setting/backend/internal/collector"
@@ -28,26 +27,22 @@ func setupHandler(t *testing.T) (*api.Handler, func()) {
 		VSOA:      vsoaClient,
 		Hub:       ws.NewHub(log),
 		Log:       log,
-		BuildVer:  "test",
-		BuildFE:   "test",
-		StartTime: time.Now(),
 	}
 	return h, func() { db.Close(); vsoaClient.Close() }
 }
 
-func doRequest(t *testing.T, handler *api.Handler, method, path string) *httptest.ResponseRecorder {
-	r := api.SetupRouter(handler)
+func req(t *testing.T, h *api.Handler, method, path string) *httptest.ResponseRecorder {
+	r := api.SetupRouter(h)
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(method, path, nil)
-	r.ServeHTTP(w, req)
+	rr, _ := http.NewRequest(method, path, nil)
+	r.ServeHTTP(w, rr)
 	return w
 }
 
 func TestHealth(t *testing.T) {
 	h, cleanup := setupHandler(t)
 	defer cleanup()
-	w := doRequest(t, h, "GET", "/health")
-	if w.Code != 200 {
+	if w := req(t, h, "GET", "/health"); w.Code != 200 {
 		t.Errorf("期望 200，实际 %d", w.Code)
 	}
 }
@@ -55,30 +50,53 @@ func TestHealth(t *testing.T) {
 func TestSystemInfo(t *testing.T) {
 	h, cleanup := setupHandler(t)
 	defer cleanup()
-	w := doRequest(t, h, "GET", "/api/v1/system/info")
+	w := req(t, h, "GET", "/api/v1/system/info")
 	if w.Code != 200 {
 		t.Errorf("期望 200，实际 %d", w.Code)
+	}
+	var resp map[string]interface{}
+	_ = json.Unmarshal(w.Body.Bytes(), &resp)
+	data := resp["data"].(map[string]interface{})
+	// 验证只包含实际字段，不含已删除的 platform_ver/backend_ver/frontend_ver/uptime_backend
+	for _, forbidden := range []string{"platform_ver", "backend_ver", "frontend_ver", "uptime_backend"} {
+		if _, ok := data[forbidden]; ok {
+			t.Errorf("响应中不应包含已删除字段 %q", forbidden)
+		}
+	}
+	// 验证必要字段存在
+	for _, required := range []string{"hostname", "arch", "uptime_system", "kernel_version"} {
+		if _, ok := data[required]; !ok {
+			t.Errorf("响应中缺少必要字段 %q", required)
+		}
 	}
 }
 
 func TestMetricsSnapshot(t *testing.T) {
 	h, cleanup := setupHandler(t)
 	defer cleanup()
-	w := doRequest(t, h, "GET", "/api/v1/system/metrics")
+	w := req(t, h, "GET", "/api/v1/system/metrics")
 	if w.Code != 200 {
 		t.Errorf("期望 200，实际 %d", w.Code)
 	}
 	var resp map[string]interface{}
 	_ = json.Unmarshal(w.Body.Bytes(), &resp)
 	if resp["code"] != float64(0) {
-		t.Errorf("响应 code 应为 0，实际 %v", resp["code"])
+		t.Errorf("code 应为 0，实际 %v", resp["code"])
+	}
+}
+
+func TestMetricsHistory(t *testing.T) {
+	h, cleanup := setupHandler(t)
+	defer cleanup()
+	if w := req(t, h, "GET", "/api/v1/metrics/history?type=cpu&range=1h"); w.Code != 200 {
+		t.Errorf("期望 200，实际 %d", w.Code)
 	}
 }
 
 func TestAppList(t *testing.T) {
 	h, cleanup := setupHandler(t)
 	defer cleanup()
-	w := doRequest(t, h, "GET", "/api/v1/apps")
+	w := req(t, h, "GET", "/api/v1/apps")
 	if w.Code != 200 {
 		t.Errorf("期望 200，实际 %d", w.Code)
 	}
@@ -90,72 +108,18 @@ func TestAppList(t *testing.T) {
 	}
 }
 
-func TestAppDetail_NotFound(t *testing.T) {
+// 已删除的路由应返回 404
+func TestRemovedRoutes(t *testing.T) {
 	h, cleanup := setupHandler(t)
 	defer cleanup()
-	w := doRequest(t, h, "GET", "/api/v1/apps/not-exist")
-	if w.Code != 404 {
-		t.Errorf("不存在应用应 404，实际 %d", w.Code)
-	}
-}
-
-func TestAppStart(t *testing.T) {
-	h, cleanup := setupHandler(t)
-	defer cleanup()
-	w := doRequest(t, h, "POST", "/api/v1/apps/rtsp-proxy/start")
-	if w.Code != 200 {
-		t.Errorf("启动应 200，实际 %d", w.Code)
-	}
-}
-
-func TestAppStop(t *testing.T) {
-	h, cleanup := setupHandler(t)
-	defer cleanup()
-	w := doRequest(t, h, "POST", "/api/v1/apps/data-collector/stop")
-	if w.Code != 200 {
-		t.Errorf("停止应 200，实际 %d", w.Code)
-	}
-}
-
-func TestAppRestart(t *testing.T) {
-	h, cleanup := setupHandler(t)
-	defer cleanup()
-	w := doRequest(t, h, "POST", "/api/v1/apps/data-collector/restart")
-	if w.Code != 200 {
-		t.Errorf("重启应 200，实际 %d", w.Code)
-	}
-}
-
-func TestMetricsHistory(t *testing.T) {
-	h, cleanup := setupHandler(t)
-	defer cleanup()
-	w := doRequest(t, h, "GET", "/api/v1/metrics/history?type=cpu&range=1h")
-	if w.Code != 200 {
-		t.Errorf("历史指标查询应 200，实际 %d", w.Code)
-	}
-}
-
-func TestVersion(t *testing.T) {
-	h, cleanup := setupHandler(t)
-	defer cleanup()
-	w := doRequest(t, h, "GET", "/api/v1/version")
-	if w.Code != 200 {
-		t.Errorf("版本接口应 200，实际 %d", w.Code)
-	}
-	var resp map[string]interface{}
-	_ = json.Unmarshal(w.Body.Bytes(), &resp)
-	data := resp["data"].(map[string]interface{})
-	if data["backend"] != "test" {
-		t.Errorf("后端版本期望 'test'，实际 %v", data["backend"])
-	}
-}
-
-func TestAuditQuery(t *testing.T) {
-	h, cleanup := setupHandler(t)
-	defer cleanup()
-	_ = doRequest(t, h, "POST", "/api/v1/apps/rtsp-proxy/start")
-	w := doRequest(t, h, "GET", "/api/v1/audit")
-	if w.Code != 200 {
-		t.Errorf("审计查询应 200，实际 %d", w.Code)
+	for _, p := range []string{
+		"/api/v1/version",
+		"/api/v1/apps/edge-setting",
+		"/api/v1/apps/edge-setting/start",
+		"/api/v1/audit",
+	} {
+		if w := req(t, h, "GET", p); w.Code == 200 {
+			t.Errorf("路由 %s 应已删除，不应返回 200，实际 %d", p, w.Code)
+		}
 	}
 }

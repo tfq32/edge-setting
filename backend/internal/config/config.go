@@ -34,8 +34,6 @@ type AuthConfig struct {
 type DataConfig struct {
 	Dir             string `mapstructure:"dir"`
 	MetricsRetain   int    `mapstructure:"metrics_retain_days"`
-	LogsRetain      int    `mapstructure:"logs_retain_days"`
-	AuditRetain     int    `mapstructure:"audit_retain_days"`
 	LogMaxSizeMB    int    `mapstructure:"log_max_size_mb"`
 }
 
@@ -67,8 +65,6 @@ func Load(path string) error {
 	v.SetDefault("server.https", false)
 	v.SetDefault("data.dir", "/var/lib/edge-setting")
 	v.SetDefault("data.metrics_retain_days", 7)
-	v.SetDefault("data.logs_retain_days", 7)
-	v.SetDefault("data.audit_retain_days", 30)
 	v.SetDefault("data.log_max_size_mb", 500)
 	v.SetDefault("log.level", "info")
 	v.SetDefault("log.format", "json")

@@ -657,8 +657,7 @@ const PAGES = [
   { id:'home',   label:'① 首页',    NarrowComp: ()=><HomePage/>,   WideComp: ()=><HomePage wide/> },
   { id:'monitor',label:'② 监控',    NarrowComp: ()=><MonitorPage/>,WideComp: ()=><MonitorPage wide/> },
   { id:'apps',   label:'③ 应用列表',NarrowComp: ()=><AppsPage/>,  WideComp: ()=><AppsPage wide/> },
-  { id:'detail', label:'④ 应用详情',NarrowComp: ()=><DetailPage/>,WideComp: ()=><DetailPage wide/> },
-  { id:'about',  label:'⑤ 系统信息',NarrowComp: ()=><AboutPage/>, WideComp: ()=><AboutPage wide/> },
+  { id:'about',  label:'④ 系统信息',NarrowComp: ()=><AboutPage/>, WideComp: ()=><AboutPage wide/> },
 ];
 
 export default function EdgeSettingUI() {

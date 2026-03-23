@@ -21,7 +21,7 @@
           <div v-if="apps.loading" class="tip">加载中…</div>
           <div v-else-if="filtered.length === 0" class="tip">暂无匹配应用</div>
           <AppCard v-for="app in filtered" :key="app.id" :app="app" class="card-gap"
-            @click="$router.push(`/apps/${app.id}`)" />
+  />
         </div>
       </van-pull-refresh>
     </div>

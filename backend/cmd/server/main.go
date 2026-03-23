@@ -19,12 +19,6 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-// 编译时注入
-var (
-	BuildVersion = "dev"
-	BuildFE      = "dev"
-)
-
 func main() {
 	// ── 配置加载 ─────────────────────────────────────────
 	cfgPath := "configs/config.yaml"
@@ -39,7 +33,7 @@ func main() {
 	// ── 日志初始化 ────────────────────────────────────────
 	log := newLogger(config.Global.Log.Level)
 	defer log.Sync()
-	log.Info("Edge Setting 启动", zap.String("version", BuildVersion))
+	log.Info("Edge Setting 启动")
 
 	// ── 数据库 ────────────────────────────────────────────
 	db, err := store.Open(config.Global.Data.Dir)
@@ -68,9 +62,6 @@ func main() {
 		VSOA:      vsoaClient,
 		Hub:       hub,
 		Log:       log,
-		BuildVer:  BuildVersion,
-		BuildFE:   BuildFE,
-		StartTime: time.Now(),
 	}
 	router := api.SetupRouter(h)
 
@@ -138,8 +129,6 @@ func runCleanupTicker(db *store.DB, log *zap.Logger) {
 	for range ticker.C {
 		if err := db.Cleanup(
 			config.Global.Data.MetricsRetain,
-			config.Global.Data.LogsRetain,
-			config.Global.Data.AuditRetain,
 		); err != nil {
 			log.Error("数据清理失败", zap.Error(err))
 		} else {
