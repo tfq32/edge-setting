@@ -9,8 +9,9 @@ func getDiskUsagePct(path string) float64 {
 	if err := syscall.Statfs(path, &stat); err != nil {
 		return 0
 	}
-	total := stat.Blocks * uint64(stat.Bsize)
-	free := stat.Bfree * uint64(stat.Bsize)
+	bsize := uint64(stat.Bsize)
+	total := uint64(stat.Blocks) * bsize
+	free := uint64(stat.Bfree) * bsize
 	if total == 0 {
 		return 0
 	}
