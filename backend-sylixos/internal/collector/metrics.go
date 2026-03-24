@@ -335,6 +335,15 @@ func (c *Collector) collectUptime(s *Snapshot) {
 	}
 }
 
+// GetSysInfo 获取系统信息（通过 unix.Uname）
+func (c *Collector) GetSysInfo() *SysInfo {
+	info, err := getSysInfo()
+	if err != nil {
+		return &SysInfo{Sysname: "unknown"}
+	}
+	return info
+}
+
 func round2(f float64) float64 {
 	return float64(int(f*100)) / 100
 }

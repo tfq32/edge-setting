@@ -2,11 +2,11 @@
 
 package collector
 
-import "syscall"
+import "golang.org/x/sys/unix"
 
 func getDiskUsagePct(path string) float64 {
-	var stat syscall.Statfs_t
-	if err := syscall.Statfs(path, &stat); err != nil {
+	var stat unix.Statfs_t
+	if err := unix.Statfs(path, &stat); err != nil {
 		return 0
 	}
 	bsize := uint64(stat.Bsize)

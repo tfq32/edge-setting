@@ -2,12 +2,7 @@ package api
 
 import (
 	"encoding/json"
-	"math"
 	"net/http"
-	"os"
-	"runtime"
-	"strconv"
-	"strings"
 	"time"
 
 	"go-ser/internal/collector"
@@ -47,26 +42,10 @@ func (h *Handler) Health(w http.ResponseWriter, r *http.Request, _ httprouter.Pa
 
 // ── 系统信息 ──────────────────────────────────────────────
 func (h *Handler) SystemInfo(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	hostname, _ := os.Hostname()
+	snap, _ := h.Collector.Collect()
 
-	kernelVersion := ""
-	if data, err := os.ReadFile("/proc/version"); err == nil {
-		kernelVersion = strings.TrimSpace(string(data))
-		if len(kernelVersion) > 200 {
-			kernelVersion = kernelVersion[:200]
-		}
-	}
-
-	var uptime uint64
-	if data, err := os.ReadFile("/proc/uptime"); err == nil {
-		fields := strings.Fields(string(data))
-		if len(fields) >= 1 {
-			val, err := strconv.ParseFloat(fields[0], 64)
-			if err == nil {
-				uptime = uint64(math.Floor(val))
-			}
-		}
-	}
+	// 通过 unix.Uname 获取系统信息
+	info := h.Collector.GetSysInfo()
 
 	type ifaceInfo struct {
 		Name  string   `json:"name"`
@@ -75,13 +54,18 @@ func (h *Handler) SystemInfo(w http.ResponseWriter, r *http.Request, _ httproute
 	}
 	var ifaces []ifaceInfo
 
+	var uptime uint64
+	if snap != nil {
+		uptime = snap.Uptime
+	}
+
 	jsonOK(w, map[string]interface{}{
-		"hostname":         hostname,
-		"arch":             runtime.GOARCH,
-		"os":               runtime.GOOS,
-		"platform":         "SylixOS",
-		"platform_version": "",
-		"kernel_version":   kernelVersion,
+		"hostname":         info.Nodename,
+		"arch":             info.Machine,
+		"os":               info.Sysname,
+		"platform":         info.Sysname,
+		"platform_version": info.Release,
+		"kernel_version":   info.Version,
 		"uptime_system":    uptime,
 		"net_interfaces":   ifaces,
 	})
