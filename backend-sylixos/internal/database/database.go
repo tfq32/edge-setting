@@ -1,6 +1,8 @@
 package database
 
 import (
+	"fmt"
+
 	"go-ser/internal/config"
 )
 
@@ -12,6 +14,12 @@ func Start() error {
 	if err != nil {
 		return err
 	}
+	// 先测试一个简单写操作，确认 I/O 是否正常
+	if _, err := EdgeDB.Exec("CREATE TABLE IF NOT EXISTS _ping (id INTEGER)"); err != nil {
+		return fmt.Errorf("数据库写测试失败: %w", err)
+	}
+	EdgeDB.Exec("DROP TABLE IF EXISTS _ping")
+
 	if err := createTables(*EdgeDB); err != nil {
 		return err
 	}
