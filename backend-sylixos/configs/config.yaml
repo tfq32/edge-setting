@@ -4,8 +4,10 @@ server:
   cert_file: ""
   key_file: ""
 
+database:
+  edge_path: "./edge-setting.db"
+
 data:
-  dir: /var/opt/edge-setting
   metrics_retain_days: 7
 
 log:

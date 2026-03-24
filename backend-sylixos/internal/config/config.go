@@ -8,10 +8,11 @@ import (
 
 // Config 全局配置
 type Config struct {
-	Server ServerConfig `yaml:"server"`
-	Data   DataConfig   `yaml:"data"`
-	Log    LogConfig    `yaml:"log"`
-	VSOA   VSOAConfig   `yaml:"vsoa"`
+	Server   ServerConfig   `yaml:"server"`
+	Database DatabaseConfig `yaml:"database"`
+	Log      LogConfig      `yaml:"log"`
+	VSOA     VSOAConfig     `yaml:"vsoa"`
+	Data     DataConfig     `yaml:"data"`
 }
 
 type ServerConfig struct {
@@ -21,9 +22,12 @@ type ServerConfig struct {
 	KeyFile  string `yaml:"key_file"`
 }
 
+type DatabaseConfig struct {
+	EdgePath string `yaml:"edge_path"`
+}
+
 type DataConfig struct {
-	Dir           string `yaml:"dir"`
-	MetricsRetain int    `yaml:"metrics_retain_days"`
+	MetricsRetain int `yaml:"metrics_retain_days"`
 }
 
 type LogConfig struct {
@@ -34,7 +38,7 @@ type VSOAConfig struct {
 	MSAddress string `yaml:"ms_address"`
 }
 
-var Global Config
+var AppConfig Config
 
 // Load 从 YAML 文件加载配置
 func Load(path string) error {
@@ -44,12 +48,13 @@ func Load(path string) error {
 	}
 
 	// 设置默认值
-	Global = Config{
-		Server: ServerConfig{Port: 8080},
-		Data:   DataConfig{Dir: "/var/lib/edge-setting", MetricsRetain: 7},
-		Log:    LogConfig{Level: "info"},
-		VSOA:   VSOAConfig{MSAddress: "vsoa://localhost:3000"},
+	AppConfig = Config{
+		Server:   ServerConfig{Port: 8080},
+		Database: DatabaseConfig{EdgePath: "./edge-setting.db"},
+		Data:     DataConfig{MetricsRetain: 7},
+		Log:      LogConfig{Level: "info"},
+		VSOA:     VSOAConfig{MSAddress: "vsoa://localhost:3000"},
 	}
 
-	return yaml.Unmarshal(data, &Global)
+	return yaml.Unmarshal(data, &AppConfig)
 }

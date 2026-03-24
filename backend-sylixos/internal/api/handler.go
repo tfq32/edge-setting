@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"go-ser/internal/collector"
-	"go-ser/internal/store"
+	"go-ser/internal/database"
 	"go-ser/internal/vsoa"
 	"go-ser/internal/ws"
 
@@ -22,7 +22,6 @@ import (
 // Handler 汇聚所有依赖
 type Handler struct {
 	Collector *collector.Collector
-	Store     *store.DB
 	VSOA      *vsoa.Client
 	Hub       *ws.Hub
 }
@@ -50,7 +49,6 @@ func (h *Handler) Health(w http.ResponseWriter, r *http.Request, _ httprouter.Pa
 func (h *Handler) SystemInfo(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	hostname, _ := os.Hostname()
 
-	// 读取内核版本
 	kernelVersion := ""
 	if data, err := os.ReadFile("/proc/version"); err == nil {
 		kernelVersion = strings.TrimSpace(string(data))
@@ -59,7 +57,6 @@ func (h *Handler) SystemInfo(w http.ResponseWriter, r *http.Request, _ httproute
 		}
 	}
 
-	// 读取 uptime
 	var uptime uint64
 	if data, err := os.ReadFile("/proc/uptime"); err == nil {
 		fields := strings.Fields(string(data))
@@ -124,7 +121,15 @@ func (h *Handler) MetricsHistory(w http.ResponseWriter, r *http.Request, _ httpr
 		from = to - 3600*1000
 	}
 
-	rows, err := h.Store.QueryMetrics(metricType, from, to)
+	if database.EdgeDB == nil {
+		jsonErr(w, http.StatusInternalServerError, 9999, "数据库未初始化")
+		return
+	}
+
+	rows, err := database.EdgeDB.Query(
+		`SELECT ts,cpu,mem_pct,disk_pct,net_in,net_out FROM metrics WHERE ts>=? AND ts<=? ORDER BY ts`,
+		from, to,
+	)
 	if err != nil {
 		jsonErr(w, http.StatusInternalServerError, 9999, err.Error())
 		return
