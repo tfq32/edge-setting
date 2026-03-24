@@ -27,12 +27,22 @@ func newSqliteDB(dbPath string) (*SqliteDB, error) {
 	db.SetMaxIdleConns(5)
 	db.SetConnMaxLifetime(time.Hour)
 	db.SetConnMaxIdleTime(5 * time.Minute)
-	// SylixOS 可能不支持 WAL（需要 mmap），使用 DELETE journal mode
-	db.Exec("PRAGMA journal_mode = DELETE")
-	db.Exec("PRAGMA synchronous = NORMAL")
-	db.Exec("PRAGMA foreign_keys = ON")
-	// 关闭 mmap，SylixOS 兼容性
-	db.Exec("PRAGMA mmap_size = 0")
+	// SylixOS 兼容性：关闭 WAL 和 mmap
+	pragmas := []string{
+		"PRAGMA journal_mode = DELETE",
+		"PRAGMA synchronous = NORMAL",
+		"PRAGMA foreign_keys = ON",
+		"PRAGMA mmap_size = 0",
+		"PRAGMA locking_mode = EXCLUSIVE",
+		"PRAGMA temp_store = MEMORY",
+	}
+	for _, p := range pragmas {
+		if _, err := db.Exec(p); err != nil {
+			log.Printf("PRAGMA 执行失败 [%s]: %v", p, err)
+		} else {
+			log.Printf("PRAGMA 执行成功: %s", p)
+		}
+	}
 	log.Printf("数据库连接成功: %s", dbPath)
 	return &SqliteDB{db: db}, nil
 }

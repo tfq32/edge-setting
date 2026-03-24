@@ -1,7 +1,7 @@
 package database
 
 import (
-	"fmt"
+	"log"
 
 	"go-ser/internal/config"
 )
@@ -14,12 +14,6 @@ func Start() error {
 	if err != nil {
 		return err
 	}
-	// 先测试一个简单写操作，确认 I/O 是否正常
-	if _, err := EdgeDB.Exec("CREATE TABLE IF NOT EXISTS _ping (id INTEGER)"); err != nil {
-		return fmt.Errorf("数据库写测试失败: %w", err)
-	}
-	EdgeDB.Exec("DROP TABLE IF EXISTS _ping")
-
 	if err := createTables(*EdgeDB); err != nil {
 		return err
 	}
@@ -35,13 +29,14 @@ func Stop() {
 func createTables(db SqliteDB) error {
 	// 配置表
 	_, err := db.Exec(`
-	CREATE TABLE IF NOT EXISTS conf (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		key TEXT UNIQUE,
-		value TEXT
-	);
+		CREATE TABLE IF NOT EXISTS conf (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			key TEXT UNIQUE,
+			value TEXT
+		);
 	`)
 	if err != nil {
+		log.Printf("创建配置表失败: %v", err)
 		return err
 	}
 
@@ -57,9 +52,14 @@ func createTables(db SqliteDB) error {
 	);
 	`)
 	if err != nil {
+		log.Printf("创建指标历史表失败: %v", err)
 		return err
 	}
 
 	_, err = db.Exec(`CREATE INDEX IF NOT EXISTS idx_metrics_ts ON metrics(ts);`)
-	return err
+	if err != nil {
+		log.Printf("创建指标历史表索引失败: %v", err)
+		return err
+	}
+	return nil
 }
