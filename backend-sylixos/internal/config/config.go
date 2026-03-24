@@ -6,13 +6,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Config 全局配置
+// Config 全局配置（与 backend 保持一致）
 type Config struct {
-	Server   ServerConfig   `yaml:"server"`
-	Database DatabaseConfig `yaml:"database"`
-	Log      LogConfig      `yaml:"log"`
-	VSOA     VSOAConfig     `yaml:"vsoa"`
-	Data     DataConfig     `yaml:"data"`
+	Server ServerConfig `yaml:"server"`
+	Data   DataConfig   `yaml:"data"`
+	Log    LogConfig    `yaml:"log"`
+	VSOA   VSOAConfig   `yaml:"vsoa"`
 }
 
 type ServerConfig struct {
@@ -22,12 +21,9 @@ type ServerConfig struct {
 	KeyFile  string `yaml:"key_file"`
 }
 
-type DatabaseConfig struct {
-	EdgePath string `yaml:"edge_path"`
-}
-
 type DataConfig struct {
-	MetricsRetain int `yaml:"metrics_retain_days"`
+	Dir           string `yaml:"dir"`
+	MetricsRetain int    `yaml:"metrics_retain_days"`
 }
 
 type LogConfig struct {
@@ -38,7 +34,7 @@ type VSOAConfig struct {
 	MSAddress string `yaml:"ms_address"`
 }
 
-var AppConfig Config
+var Global Config
 
 // Load 从 YAML 文件加载配置
 func Load(path string) error {
@@ -47,14 +43,13 @@ func Load(path string) error {
 		return err
 	}
 
-	// 设置默认值
-	AppConfig = Config{
-		Server:   ServerConfig{Port: 8080},
-		Database: DatabaseConfig{EdgePath: "./edge-setting.db"},
-		Data:     DataConfig{MetricsRetain: 7},
-		Log:      LogConfig{Level: "info"},
-		VSOA:     VSOAConfig{MSAddress: "vsoa://localhost:3000"},
+	// 默认值
+	Global = Config{
+		Server: ServerConfig{Port: 8080},
+		Data:   DataConfig{Dir: "/var/lib/edge-setting", MetricsRetain: 7},
+		Log:    LogConfig{Level: "info"},
+		VSOA:   VSOAConfig{MSAddress: "vsoa://localhost:3000"},
 	}
 
-	return yaml.Unmarshal(data, &AppConfig)
+	return yaml.Unmarshal(data, &Global)
 }

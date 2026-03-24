@@ -2,6 +2,8 @@ package database
 
 import (
 	"log"
+	"os"
+	"path/filepath"
 
 	"go-ser/internal/config"
 )
@@ -9,8 +11,14 @@ import (
 var EdgeDB *SqliteDB
 
 func Start() error {
+	dir := config.Global.Data.Dir
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+	dbPath := filepath.Join(dir, "edge-setting.db")
+
 	var err error
-	EdgeDB, err = newSqliteDB(config.AppConfig.Database.EdgePath)
+	EdgeDB, err = newSqliteDB(dbPath)
 	if err != nil {
 		return err
 	}

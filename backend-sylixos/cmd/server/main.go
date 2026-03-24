@@ -31,7 +31,7 @@ func main() {
 	}
 
 	// ── 日志初始化 ────────────────────────────────────────
-	initLogger(config.AppConfig.Log.Level)
+	initLogger(config.Global.Log.Level)
 	log.Info("Edge Setting (SylixOS) 启动")
 
 	// ── 数据库 ────────────────────────────────────────────
@@ -41,7 +41,7 @@ func main() {
 	defer database.Stop()
 
 	// ── VSOA 客户端 ───────────────────────────────────────
-	vsoaClient, err := vsoa.New(config.AppConfig.VSOA.MSAddress)
+	vsoaClient, err := vsoa.New(config.Global.VSOA.MSAddress)
 	if err != nil {
 		log.WithError(err).Fatal("VSOA 连接失败")
 	}
@@ -66,14 +66,14 @@ func main() {
 	go runCleanupTicker()
 
 	// ── HTTP Server ───────────────────────────────────────
-	addr := fmt.Sprintf(":%d", config.AppConfig.Server.Port)
+	addr := fmt.Sprintf(":%d", config.Global.Server.Port)
 	srv := &http.Server{Addr: addr, Handler: router}
 
 	go func() {
 		log.WithField("addr", addr).Info("HTTP 服务启动")
 		var err error
-		if config.AppConfig.Server.HTTPS {
-			err = srv.ListenAndServeTLS(config.AppConfig.Server.CertFile, config.AppConfig.Server.KeyFile)
+		if config.Global.Server.HTTPS {
+			err = srv.ListenAndServeTLS(config.Global.Server.CertFile, config.Global.Server.KeyFile)
 		} else {
 			err = srv.ListenAndServe()
 		}
@@ -104,14 +104,12 @@ func runMetricsTicker(coll *collector.Collector, hub *ws.Hub) {
 			log.WithError(err).Error("指标采集失败")
 			continue
 		}
-		// 持久化到 SQLite
 		if database.EdgeDB != nil {
 			database.EdgeDB.Exec(
 				`INSERT INTO metrics(ts,cpu,mem_pct,disk_pct,net_in,net_out) VALUES(?,?,?,?,?,?)`,
 				snap.Timestamp, snap.CPU, snap.MemPct, snap.DiskPct, snap.NetIn, snap.NetOut,
 			)
 		}
-		// 广播给 WebSocket 客户端
 		hub.Broadcast(ws.Message{Type: "metrics", Data: snap})
 	}
 }
@@ -124,7 +122,7 @@ func runCleanupTicker() {
 		if database.EdgeDB == nil {
 			continue
 		}
-		retainDays := config.AppConfig.Data.MetricsRetain
+		retainDays := config.Global.Data.MetricsRetain
 		if retainDays <= 0 {
 			retainDays = 7
 		}
