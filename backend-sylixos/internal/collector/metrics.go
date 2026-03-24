@@ -7,7 +7,6 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -213,20 +212,11 @@ func (c *Collector) collectMemory(s *Snapshot) {
 	s.SwapUsed = s.SwapTotal - info["SwapFree"]
 }
 
-// ── 磁盘使用率（syscall.Statfs，SylixOS 支持 POSIX statfs）
+// ── 磁盘使用率 ───────────────────────────────────────────
+// 实现在平台文件 disk_unix.go / disk_windows.go 中
 
 func (c *Collector) collectDiskUsage(s *Snapshot) {
-	var stat syscall.Statfs_t
-	if err := syscall.Statfs("/", &stat); err != nil {
-		return
-	}
-	total := stat.Blocks * uint64(stat.Bsize)
-	free := stat.Bfree * uint64(stat.Bsize)
-	if total == 0 {
-		return
-	}
-	used := total - free
-	s.DiskPct = round2(float64(used) / float64(total) * 100)
+	s.DiskPct = getDiskUsagePct("/")
 }
 
 // ── 磁盘 IO（/proc/diskstats）─────────────────────────────
