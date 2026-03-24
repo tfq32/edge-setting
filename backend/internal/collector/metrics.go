@@ -101,18 +101,37 @@ func (c *Collector) Collect() (*Snapshot, error) {
 		c.prevDiskIO = ioMap
 	}
 
-	// 网络 I/O 速率
-	if netList, err := net.IOCounters(false); err == nil && len(netList) > 0 {
-		cur := netList[0]
-		if prev, ok := c.prevNetIO["all"]; ok {
-			if cur.BytesRecv >= prev.BytesRecv {
-				s.NetIn = uint64(float64(cur.BytesRecv-prev.BytesRecv) / elapsed)
+	// 网络 I/O 速率（排除 lo 回环和虚拟网卡，只统计物理网卡）
+	if netList, err := net.IOCounters(true); err == nil {
+		var totalRecv, totalSent uint64
+		var prevTotalRecv, prevTotalSent uint64
+		hasPrev := true
+
+		for _, iface := range netList {
+			// 排除回环、docker、veth、bridge 等虚拟网卡
+			if isVirtualIface(iface.Name) {
+				continue
 			}
-			if cur.BytesSent >= prev.BytesSent {
-				s.NetOut = uint64(float64(cur.BytesSent-prev.BytesSent) / elapsed)
+			totalRecv += iface.BytesRecv
+			totalSent += iface.BytesSent
+
+			if prev, ok := c.prevNetIO[iface.Name]; ok {
+				prevTotalRecv += prev.BytesRecv
+				prevTotalSent += prev.BytesSent
+			} else {
+				hasPrev = false
+			}
+			c.prevNetIO[iface.Name] = iface
+		}
+
+		if hasPrev && prevTotalRecv > 0 {
+			if totalRecv >= prevTotalRecv {
+				s.NetIn = uint64(float64(totalRecv-prevTotalRecv) / elapsed)
+			}
+			if totalSent >= prevTotalSent {
+				s.NetOut = uint64(float64(totalSent-prevTotalSent) / elapsed)
 			}
 		}
-		c.prevNetIO["all"] = cur
 	}
 
 	// 系统负载
@@ -129,6 +148,17 @@ func (c *Collector) Collect() (*Snapshot, error) {
 
 	c.prevTime = now
 	return s, nil
+}
+
+// isVirtualIface 判断是否为虚拟网卡（lo、docker、veth、bridge 等）
+func isVirtualIface(name string) bool {
+	prefixes := []string{"lo", "docker", "veth", "br-", "virbr", "vnet", "tun", "tap", "dummy"}
+	for _, p := range prefixes {
+		if len(name) >= len(p) && name[:len(p)] == p {
+			return true
+		}
+	}
+	return false
 }
 
 func round2(f float64) float64 {
