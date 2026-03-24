@@ -19,7 +19,7 @@
             <MetricCard label="磁盘使用" :value="snap?.disk_pct ?? 0" :pct="snap?.disk_pct ?? 0" :warn="85" :danger="90"
               @click="$router.push('/monitor')" />
             <MetricCard label="网络流入" :pct="Math.min((snap?.net_in??0)/1048576*10,100)"
-              :value="((snap?.net_in??0)/1024).toFixed(0)" unit=" KB/s" :warn="80" :danger="95"
+              :value="Math.round((snap?.net_in??0)/1024)" unit=" KB/s" :warn="80" :danger="95"
               @click="$router.push('/monitor')" />
           </div>
 
