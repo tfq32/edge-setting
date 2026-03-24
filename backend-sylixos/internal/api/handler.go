@@ -99,6 +99,10 @@ func (h *Handler) MetricsSnapshot(w http.ResponseWriter, r *http.Request, _ http
 
 // ── 历史指标查询 ──────────────────────────────────────────
 func (h *Handler) MetricsHistory(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	metricType := r.URL.Query().Get("type")
+	if metricType == "" {
+		metricType = "cpu"
+	}
 	rangeStr := r.URL.Query().Get("range")
 	if rangeStr == "" {
 		rangeStr = "1h"
@@ -122,7 +126,10 @@ func (h *Handler) MetricsHistory(w http.ResponseWriter, r *http.Request, _ httpr
 		return
 	}
 
-	rows, err := database.EdgeDB.QueryMetrics(from, to)
+	rows, err := database.EdgeDB.Query(
+		`SELECT ts,cpu,mem_pct,disk_pct,net_in,net_out FROM metrics WHERE ts>=? AND ts<=? ORDER BY ts`,
+		from, to,
+	)
 	if err != nil {
 		jsonErr(w, http.StatusInternalServerError, 9999, err.Error())
 		return

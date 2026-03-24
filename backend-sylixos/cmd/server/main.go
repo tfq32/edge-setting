@@ -104,16 +104,12 @@ func runMetricsTicker(coll *collector.Collector, hub *ws.Hub) {
 			log.WithError(err).Error("指标采集失败")
 			continue
 		}
-		// 持久化到 BoltDB
+		// 持久化到 SQLite
 		if database.EdgeDB != nil {
-			database.EdgeDB.InsertMetric(database.MetricRow{
-				Timestamp: snap.Timestamp,
-				CPU:       snap.CPU,
-				MemPct:    snap.MemPct,
-				DiskPct:   snap.DiskPct,
-				NetIn:     snap.NetIn,
-				NetOut:    snap.NetOut,
-			})
+			database.EdgeDB.Exec(
+				`INSERT INTO metrics(ts,cpu,mem_pct,disk_pct,net_in,net_out) VALUES(?,?,?,?,?,?)`,
+				snap.Timestamp, snap.CPU, snap.MemPct, snap.DiskPct, snap.NetIn, snap.NetOut,
+			)
 		}
 		// 广播给 WebSocket 客户端
 		hub.Broadcast(ws.Message{Type: "metrics", Data: snap})
@@ -128,7 +124,12 @@ func runCleanupTicker() {
 		if database.EdgeDB == nil {
 			continue
 		}
-		if err := database.EdgeDB.CleanupMetrics(config.AppConfig.Data.MetricsRetain); err != nil {
+		retainDays := config.AppConfig.Data.MetricsRetain
+		if retainDays <= 0 {
+			retainDays = 7
+		}
+		cutoff := time.Now().UnixMilli() - int64(retainDays)*86400*1000
+		if _, err := database.EdgeDB.Exec(`DELETE FROM metrics WHERE ts<?`, cutoff); err != nil {
 			log.WithError(err).Error("数据清理失败")
 		} else {
 			log.Info("数据清理完成")
