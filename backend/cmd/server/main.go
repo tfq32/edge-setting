@@ -100,7 +100,7 @@ func main() {
 
 // runMetricsTicker 每 3 秒采集一次指标并广播
 func runMetricsTicker(coll *collector.Collector, db *store.DB, hub *ws.Hub, log *zap.Logger) {
-	ticker := time.NewTicker(3 * time.Second)
+	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 	for range ticker.C {
 		snap, err := coll.Collect()

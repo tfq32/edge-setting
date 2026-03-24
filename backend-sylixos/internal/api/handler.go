@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"time"
 
-	"go-ser/internal/collector"
 	"go-ser/internal/database"
 	"go-ser/internal/vsoa"
 	"go-ser/internal/ws"
@@ -16,9 +15,8 @@ import (
 
 // Handler 汇聚所有依赖
 type Handler struct {
-	Collector *collector.Collector
-	VSOA      *vsoa.Client
-	Hub       *ws.Hub
+	VSOA *vsoa.Client
+	Hub  *ws.Hub
 }
 
 // JSON 响应辅助
@@ -40,12 +38,13 @@ func (h *Handler) Health(w http.ResponseWriter, r *http.Request, _ httprouter.Pa
 	json.NewEncoder(w).Encode(map[string]interface{}{"status": "ok", "ts": time.Now().UnixMilli()})
 }
 
-// ── 系统信息 ──────────────────────────────────────────────
+// ── 系统信息（通过 VSOA 从 MS 获取）──────────────────────
 func (h *Handler) SystemInfo(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	snap, _ := h.Collector.Collect()
-
-	// 通过 unix.Uname 获取系统信息
-	info := h.Collector.GetSysInfo()
+	info, err := h.VSOA.GetSystemInfo(r.Context())
+	if err != nil {
+		jsonErr(w, http.StatusServiceUnavailable, 1010, "MS 不可达: "+err.Error())
+		return
+	}
 
 	type ifaceInfo struct {
 		Name  string   `json:"name"`
@@ -54,28 +53,23 @@ func (h *Handler) SystemInfo(w http.ResponseWriter, r *http.Request, _ httproute
 	}
 	var ifaces []ifaceInfo
 
-	var uptime uint64
-	if snap != nil {
-		uptime = snap.Uptime
-	}
-
 	jsonOK(w, map[string]interface{}{
-		"hostname":         info.Nodename,
-		"arch":             info.Machine,
-		"os":               info.Sysname,
-		"platform":         info.Sysname,
-		"platform_version": info.Release,
-		"kernel_version":   info.Version,
-		"uptime_system":    uptime,
+		"hostname":         info.Hostname,
+		"arch":             info.Arch,
+		"os":               info.OS,
+		"platform":         info.Platform,
+		"platform_version": info.PlatformVersion,
+		"kernel_version":   info.KernelVersion,
+		"uptime_system":    info.UptimeSystem,
 		"net_interfaces":   ifaces,
 	})
 }
 
-// ── 实时指标快照 ──────────────────────────────────────────
+// ── 实时指标快照（通过 VSOA 从 MS 获取）──────────────────
 func (h *Handler) MetricsSnapshot(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	snap, err := h.Collector.Collect()
+	snap, err := h.VSOA.GetMetrics(r.Context())
 	if err != nil {
-		jsonErr(w, http.StatusInternalServerError, 9999, err.Error())
+		jsonErr(w, http.StatusServiceUnavailable, 1010, "MS 不可达: "+err.Error())
 		return
 	}
 	jsonOK(w, snap)

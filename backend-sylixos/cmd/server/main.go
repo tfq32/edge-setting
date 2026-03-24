@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"go-ser/internal/api"
-	"go-ser/internal/collector"
 	"go-ser/internal/config"
 	"go-ser/internal/database"
 	"go-ser/internal/vsoa"
@@ -47,22 +46,18 @@ func main() {
 	}
 	defer vsoaClient.Close()
 
-	// ── 指标采集器 ────────────────────────────────────────
-	coll := collector.New()
-
 	// ── WebSocket Hub ─────────────────────────────────────
 	hub := ws.NewHub()
 
 	// ── HTTP Handler & Router ─────────────────────────────
 	h := &api.Handler{
-		Collector: coll,
-		VSOA:      vsoaClient,
-		Hub:       hub,
+		VSOA: vsoaClient,
+		Hub:  hub,
 	}
 	router := api.SetupRouter(h)
 
-	// ── 定时任务 ──────────────────────────────────────────
-	go runMetricsTicker(coll, hub)
+	// ── 定时任务：每 5 秒通过 VSOA 从 MS 获取指标 ────────
+	go runMetricsTicker(vsoaClient, hub)
 	go runCleanupTicker()
 
 	// ── HTTP Server ───────────────────────────────────────
@@ -94,22 +89,24 @@ func main() {
 	log.Info("服务已退出")
 }
 
-// runMetricsTicker 每 3 秒采集一次指标并广播
-func runMetricsTicker(coll *collector.Collector, hub *ws.Hub) {
-	ticker := time.NewTicker(3 * time.Second)
+// runMetricsTicker 每 5 秒通过 VSOA 向 MS 请求指标，存储并广播
+func runMetricsTicker(vsoaClient *vsoa.Client, hub *ws.Hub) {
+	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 	for range ticker.C {
-		snap, err := coll.Collect()
+		snap, err := vsoaClient.GetMetrics(context.Background())
 		if err != nil {
-			log.WithError(err).Error("指标采集失败")
+			log.WithError(err).Error("VSOA 指标获取失败")
 			continue
 		}
+		// 持久化到 SQLite
 		if database.EdgeDB != nil {
 			database.EdgeDB.Exec(
 				`INSERT INTO metrics(ts,cpu,mem_pct,disk_pct,net_in,net_out) VALUES(?,?,?,?,?,?)`,
 				snap.Timestamp, snap.CPU, snap.MemPct, snap.DiskPct, snap.NetIn, snap.NetOut,
 			)
 		}
+		// 广播给 WebSocket 客户端
 		hub.Broadcast(ws.Message{Type: "metrics", Data: snap})
 	}
 }
