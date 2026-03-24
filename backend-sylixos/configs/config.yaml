@@ -5,7 +5,7 @@ server:
   key_file: ""
 
 data:
-  dir: /var/opt/edge-setting
+  dir: data
   metrics_retain_days: 7
 
 log:

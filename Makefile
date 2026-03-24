@@ -10,6 +10,9 @@ BIN = output/server
 dev-backend:
 	cd backend && go mod tidy && CONFIG_PATH=configs/config.yaml go run ./cmd/server
 
+dev-backend-sylixos:
+	cd backend-sylixos && go mod tidy && CONFIG_PATH=configs/config.yaml go run ./cmd/server
+
 dev-frontend:
 	cd frontend && pnpm run dev
 
@@ -27,7 +30,7 @@ build-linux-amd64:
 	@echo "> build Linux amd64..."
 	@mkdir -p $(BIN)
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 \
-		go build -C backend -ldflags "-s -w" \
+		go build -C backend \
 		-o ../$(BIN)/edge-setting-linux-amd64 ./cmd/server
 	cp -r backend/configs $(BIN)/
 
@@ -35,9 +38,17 @@ build-linux-arm64:
 	@echo "> build Linux arm64..."
 	@mkdir -p $(BIN)
 	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 \
-		go build -C backend -ldflags "-s -w" \
+		go build -C backend \
 		-o ../$(BIN)/edge-setting-linux-arm64 ./cmd/server
 	cp -r backend/configs $(BIN)/
+
+build-sylixos-arm64:
+	@echo "> build SylixOS arm64..."
+	@mkdir -p $(BIN)
+	GOOS=sylixos GOARCH=arm64 CGO_ENABLED=0 \
+		go build -C backend-sylixos -tags sqlite3_flock \
+		-o ../$(BIN)/edge-setting-sylixos-arm64 ./cmd/server
+	cp -r backend-sylixos/configs $(BIN)/
 
 # ── 测试 ──────────────────────────────────────────────────
 test: test-backend test-frontend

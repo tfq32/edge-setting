@@ -1,6 +1,6 @@
 module go-ser
 
-go 1.24.0
+go 1.25.0
 
 replace github.com/acoinfo/go-isatty => github.com/acoinfo/go-isatty v0.0.20-sylixos.1
 
