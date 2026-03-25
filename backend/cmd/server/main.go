@@ -19,6 +19,9 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+// 指标数据保留天数（写死）
+const metricsRetainDays = 7
+
 func main() {
 	// ── 配置加载 ─────────────────────────────────────────
 	cfgPath := "configs/config.yaml"
@@ -75,13 +78,7 @@ func main() {
 
 	go func() {
 		log.Info("HTTP 服务启动", zap.String("addr", addr))
-		var err error
-		if config.Global.Server.HTTPS {
-			err = srv.ListenAndServeTLS(config.Global.Server.CertFile, config.Global.Server.KeyFile)
-		} else {
-			err = srv.ListenAndServe()
-		}
-		if err != nil && err != http.ErrServerClosed {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatal("HTTP 服务异常", zap.Error(err))
 		}
 	}()
@@ -98,7 +95,7 @@ func main() {
 	log.Info("服务已退出")
 }
 
-// runMetricsTicker 每 3 秒采集一次指标并广播
+// runMetricsTicker 每 5 秒采集一次指标并广播
 func runMetricsTicker(coll *collector.Collector, db *store.DB, hub *ws.Hub, log *zap.Logger) {
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
@@ -108,7 +105,6 @@ func runMetricsTicker(coll *collector.Collector, db *store.DB, hub *ws.Hub, log 
 			log.Error("指标采集失败", zap.Error(err))
 			continue
 		}
-		// 持久化到 SQLite
 		_ = db.InsertMetric(store.MetricRow{
 			Timestamp: snap.Timestamp,
 			CPU:       snap.CPU,
@@ -117,7 +113,6 @@ func runMetricsTicker(coll *collector.Collector, db *store.DB, hub *ws.Hub, log 
 			NetIn:     snap.NetIn,
 			NetOut:    snap.NetOut,
 		})
-		// 广播给 WebSocket 客户端
 		hub.Broadcast(ws.Message{Type: "metrics", Data: snap})
 	}
 }
@@ -127,9 +122,7 @@ func runCleanupTicker(db *store.DB, log *zap.Logger) {
 	ticker := time.NewTicker(1 * time.Hour)
 	defer ticker.Stop()
 	for range ticker.C {
-		if err := db.Cleanup(
-			config.Global.Data.MetricsRetain,
-		); err != nil {
+		if err := db.Cleanup(metricsRetainDays); err != nil {
 			log.Error("数据清理失败", zap.Error(err))
 		} else {
 			log.Info("数据清理完成")

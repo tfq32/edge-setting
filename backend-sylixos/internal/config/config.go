@@ -6,7 +6,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Config 全局配置（与 backend 保持一致）
+// Config 全局配置
 type Config struct {
 	Server ServerConfig `yaml:"server"`
 	Data   DataConfig   `yaml:"data"`
@@ -15,15 +15,11 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	Port     int    `yaml:"port"`
-	HTTPS    bool   `yaml:"https"`
-	CertFile string `yaml:"cert_file"`
-	KeyFile  string `yaml:"key_file"`
+	Port int `yaml:"port"`
 }
 
 type DataConfig struct {
-	Dir           string `yaml:"dir"`
-	MetricsRetain int    `yaml:"metrics_retain_days"`
+	Dir string `yaml:"dir"`
 }
 
 type LogConfig struct {
@@ -45,10 +41,10 @@ func Load(path string) error {
 
 	// 默认值
 	Global = Config{
-		Server: ServerConfig{Port: 8080},
-		Data:   DataConfig{Dir: "/var/lib/edge-setting", MetricsRetain: 7},
+		Server: ServerConfig{Port: 10000},
+		Data:   DataConfig{Dir: "data"},
 		Log:    LogConfig{Level: "info"},
-		VSOA:   VSOAConfig{MSAddress: "vsoa://localhost:3000"},
+		VSOA:   VSOAConfig{MSAddress: "localhost:3001"},
 	}
 
 	return yaml.Unmarshal(data, &Global)

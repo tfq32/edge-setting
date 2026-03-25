@@ -15,15 +15,11 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	Port     int    `mapstructure:"port"`
-	HTTPS    bool   `mapstructure:"https"`
-	CertFile string `mapstructure:"cert_file"`
-	KeyFile  string `mapstructure:"key_file"`
+	Port int `mapstructure:"port"`
 }
 
 type DataConfig struct {
-	Dir           string `mapstructure:"dir"`
-	MetricsRetain int    `mapstructure:"metrics_retain_days"`
+	Dir string `mapstructure:"dir"`
 }
 
 type LogConfig struct {
@@ -46,12 +42,10 @@ func Load(path string) error {
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
 	// 默认值
-	v.SetDefault("server.port", 8080)
-	v.SetDefault("server.https", false)
-	v.SetDefault("data.dir", "/var/lib/edge-setting")
-	v.SetDefault("data.metrics_retain_days", 7)
+	v.SetDefault("server.port", 10000)
+	v.SetDefault("data.dir", "/var/opt/edge-setting")
 	v.SetDefault("log.level", "info")
-	v.SetDefault("vsoa.ms_address", "vsoa://localhost:3000")
+	v.SetDefault("vsoa.ms_address", "localhost:3001")
 
 	if err := v.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {

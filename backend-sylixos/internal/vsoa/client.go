@@ -98,7 +98,7 @@ func New(addr string) (*Client, error) {
 
 func (c *Client) connect() error {
 	cli := vsoaClient.NewClient(vsoaClient.DefaultOption)
-	if _, err := cli.Connect("tcp", c.addr); err != nil {
+	if _, err := cli.Connect("vsoa", c.addr); err != nil {
 		return err
 	}
 	c.mu.Lock()

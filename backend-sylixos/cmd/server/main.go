@@ -66,13 +66,7 @@ func main() {
 
 	go func() {
 		log.WithField("addr", addr).Info("HTTP 服务启动")
-		var err error
-		if config.Global.Server.HTTPS {
-			err = srv.ListenAndServeTLS(config.Global.Server.CertFile, config.Global.Server.KeyFile)
-		} else {
-			err = srv.ListenAndServe()
-		}
-		if err != nil && err != http.ErrServerClosed {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.WithError(err).Fatal("HTTP 服务异常")
 		}
 	}()
@@ -111,6 +105,9 @@ func runMetricsTicker(vsoaClient *vsoa.Client, hub *ws.Hub) {
 	}
 }
 
+// 指标数据保留天数（写死）
+const metricsRetainDays = 7
+
 // runCleanupTicker 每小时执行一次数据清理
 func runCleanupTicker() {
 	ticker := time.NewTicker(1 * time.Hour)
@@ -119,11 +116,7 @@ func runCleanupTicker() {
 		if database.EdgeDB == nil {
 			continue
 		}
-		retainDays := config.Global.Data.MetricsRetain
-		if retainDays <= 0 {
-			retainDays = 7
-		}
-		cutoff := time.Now().UnixMilli() - int64(retainDays)*86400*1000
+		cutoff := time.Now().UnixMilli() - int64(metricsRetainDays)*86400*1000
 		if _, err := database.EdgeDB.Exec(`DELETE FROM metrics WHERE ts<?`, cutoff); err != nil {
 			log.WithError(err).Error("数据清理失败")
 		} else {
