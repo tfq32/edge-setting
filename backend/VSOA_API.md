@@ -1,37 +1,36 @@
-# VSOA 内部接口文档（Linux）
+# VSOA 接口文档（Linux → MS）
 
 **版本**：v2.1.0
 **协议**：VSOA 软总线
 **方向**：Edge Setting → MS
-**状态**：**Mock 实现**，接入真实 MS 后替换
+**接口前缀**：`/api/v1/edge_setting`
 
 ---
 
 ## 概述
 
-Linux 版 Edge Setting 的系统监控数据由 **gopsutil 本地采集**，不通过 VSOA 获取。
-
-VSOA 仅用于与 MS 通信，获取**微应用列表**信息。
+Linux 版 Edge Setting 的系统监控数据由 gopsutil 本地采集，不通过 VSOA 获取。
+VSOA 仅用于从 MS 获取**微应用列表**。
 
 ---
 
 ## 接口列表
 
-| 操作             | 方向              | 方法    | 对应 HTTP 接口      | 当前状态 |
-|------------------|-------------------|---------|---------------------|----------|
-| 查询微应用列表   | Edge Setting → MS | RPC GET | `GET /api/v1/apps`  | Mock     |
+| VSOA URL                              | 方法     | 说明         | 调用频率 |
+|---------------------------------------|----------|-------------|---------|
+| `/api/v1/edge_setting/app/list`       | RPC GET  | 微应用列表   | 按需     |
 
 ---
 
-## 查询微应用列表
+## 获取微应用列表
 
 ### 请求
 
 ```
-VSOA RPC GET /ms/apps/list
+VSOA RPC GET /api/v1/edge_setting/app/list
 ```
 
-### 响应
+### 响应（payload.Param）
 
 ```json
 [
@@ -52,8 +51,6 @@ VSOA RPC GET /ms/apps/list
 ]
 ```
 
-### 字段说明
-
 | 字段         | 类型    | 说明                            |
 |--------------|---------|---------------------------------|
 | `id`         | string  | 微应用唯一 ID                   |
@@ -73,9 +70,9 @@ VSOA RPC GET /ms/apps/list
 
 ## 连接管理
 
-- 连接地址：`config.yaml` 中 `vsoa.ms_address`（默认 `vsoa://localhost:3000`）
+- 连接地址：`config.yaml` → `vsoa.ms_address`（默认 `vsoa://localhost:3000`）
 - 断线重连：指数退避 1s → 2s → 4s → 8s → 16s → 30s（上限）
 
 ---
 
-*Edge Setting v2.1.0 · Linux · VSOA 内部接口 · 2025*
+*Edge Setting v2.1.0 · Linux · VSOA 接口 · 2025*

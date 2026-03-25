@@ -1,43 +1,41 @@
-# VSOA 内部接口文档（SylixOS）
+# VSOA 接口文档（SylixOS → MS）
 
 **版本**：v2.1.0
 **协议**：VSOA 软总线
 **方向**：Edge Setting → MS
-**状态**：**Mock 实现**，接入真实 MS 后替换
+**SDK**：`github.com/acoinfo/vsoa`
+**接口前缀**：`/api/v1/edge_setting`
 
 ---
 
 ## 概述
 
-SylixOS 版 Edge Setting **不做本地系统采集**，所有数据通过 VSOA 软总线从 MS 服务获取。
-
-每 5 秒轮询一次 MS，获取系统指标后：
-1. 写入 SQLite 持久化
-2. 通过 WebSocket 广播给前端
+SylixOS 版 Edge Setting 不做本地系统采集，所有监控数据和系统信息通过 VSOA RPC GET 从 MS 获取。
+响应数据统一通过 `payload.Param`（JSON）返回。
 
 ---
 
 ## 接口列表
 
-| 操作             | 方向              | 方法    | 对应 HTTP 接口          | 频率  | 当前状态 |
-|------------------|-------------------|---------|------------------------|-------|----------|
-| 获取系统指标     | Edge Setting → MS | RPC GET | `GET /system/metrics`  | 5s    | Mock     |
-| 获取系统信息     | Edge Setting → MS | RPC GET | `GET /system/info`     | 按需  | Mock     |
-| 查询微应用列表   | Edge Setting → MS | RPC GET | `GET /apps`            | 按需  | Mock     |
+| VSOA URL                                    | 方法     | 说明         | 调用频率 |
+|---------------------------------------------|----------|-------------|---------|
+| `/api/v1/edge_setting/system/metrics`       | RPC GET  | 系统指标快照 | 每 5 秒  |
+| `/api/v1/edge_setting/system/info`          | RPC GET  | 系统信息     | 按需     |
+| `/api/v1/edge_setting/app/list`             | RPC GET  | 微应用列表   | 按需     |
 
 ---
 
 ## 1. 获取系统指标
 
-定时任务每 5 秒调用一次，获取系统资源快照。
+每 5 秒定时轮询，获取后写入 SQLite 并通过 WebSocket 广播。
 
 ### 请求
 
 ```
-VSOA RPC GET /ms/system/metrics
+VSOA RPC GET /api/v1/edge_setting/system/metrics
 ```
 
-### 响应
+### 响应（payload.Param）
 
 ```json
 {
@@ -61,8 +59,6 @@ VSOA RPC GET /ms/system/metrics
 }
 ```
 
-### 字段说明
-
 | 字段         | 类型    | 单位    | 说明             |
 |--------------|---------|---------|------------------|
 | `ts`         | int64   | ms      | 采集时间戳       |
@@ -83,27 +79,19 @@ VSOA RPC GET /ms/system/metrics
 | `load15`     | float64 | —       | 15 分钟负载      |
 | `uptime`     | uint64  | 秒      | 系统运行时长     |
 
-### 数据流转
-
-```
-MS → VSOA → Edge Setting → SQLite (持久化)
-                         → WebSocket (实时推送)
-                         → HTTP API (按需查询)
-```
-
 ---
 
 ## 2. 获取系统信息
 
-前端请求 `/api/v1/system/info` 时按需调用。
+前端请求时按需调用。
 
 ### 请求
 
 ```
-VSOA RPC GET /ms/system/info
+VSOA RPC GET /api/v1/edge_setting/system/info
 ```
 
-### 响应
+### 响应（payload.Param）
 
 ```json
 {
@@ -129,17 +117,17 @@ VSOA RPC GET /ms/system/info
 
 ---
 
-## 3. 查询微应用列表
+## 3. 获取微应用列表
 
-前端请求 `/api/v1/apps` 时按需调用。
+前端请求时按需调用。
 
 ### 请求
 
 ```
-VSOA RPC GET /ms/apps/list
+VSOA RPC GET /api/v1/edge_setting/app/list
 ```
 
-### 响应
+### 响应（payload.Param）
 
 ```json
 [
@@ -179,28 +167,10 @@ VSOA RPC GET /ms/apps/list
 
 ## 连接管理
 
-- 连接地址：`config.yaml` 中 `vsoa.ms_address`（默认 `vsoa://localhost:3000`）
-- 断线重连：指数退避 1s → 2s → 4s → 8s → 16s → 30s（上限）
+- 连接地址：`config.yaml` → `vsoa.ms_address`（默认 `vsoa://localhost:3000`）
+- 自动重连：指数退避 1s → 2s → 4s → 8s → 16s → 30s（上限）
+- 连接失败不阻塞启动，后台持续重连
 
 ---
 
-## 架构图
-
-```
-┌─────────┐    VSOA     ┌────────┐    HTTP/WS    ┌──────────┐
-│   MS    │ ──────────→ │ Edge   │ ─────────────→ │ Frontend │
-│ Service │  metrics    │Setting │  /api/v1/*     │   (Vue)  │
-│         │  sysinfo    │(SylixOS│  /ws           │          │
-│         │  apps       │        │                │          │
-└─────────┘             └───┬────┘                └──────────┘
-                            │
-                            ↓
-                       ┌─────────┐
-                       │ SQLite  │
-                       │ (持久化) │
-                       └─────────┘
-```
-
----
-
-*Edge Setting v2.1.0 · SylixOS · VSOA 内部接口 · 2025*
+*Edge Setting v2.1.0 · SylixOS · VSOA 接口 · 2025*

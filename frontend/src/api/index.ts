@@ -22,5 +22,5 @@ export const systemApi = {
 
 // ── 微应用（只读，仅列表） ─────────────────────────────────
 export const appsApi = {
-  list: () => http.get('/apps'),
+  list: () => http.get('/app/list'),
 }

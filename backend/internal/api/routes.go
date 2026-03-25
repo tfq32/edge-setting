@@ -25,7 +25,7 @@ func SetupRouter(h *Handler) *gin.Engine {
 		v1.GET("/system/metrics",    h.MetricsSnapshot)
 		v1.GET("/system/metrics/ws", h.MetricsWS)
 		v1.GET("/metrics/history",   h.MetricsHistory)
-		v1.GET("/apps",              h.AppList)
+		v1.GET("/app/list",          h.AppList)
 	}
 
 	return r

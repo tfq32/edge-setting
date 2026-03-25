@@ -21,7 +21,7 @@
 | GET  | `/api/v1/system/metrics`    | 实时指标快照       | gopsutil    |
 | WS   | `/api/v1/system/metrics/ws` | 指标实时推送       | gopsutil    |
 | GET  | `/api/v1/metrics/history`   | 历史指标查询       | SQLite      |
-| GET  | `/api/v1/apps`              | 微应用列表         | VSOA/MS Mock |
+| GET  | `/api/v1/app/list`              | 微应用列表         | VSOA/MS Mock |
 
 ---
 
@@ -50,7 +50,7 @@
 健康检查，适用于探针、监控系统。
 
 ```json
-{ "status": "ok", "ts": 1710000000000 }
+{ "code": 0 }
 ```
 
 ---
@@ -202,7 +202,7 @@
 
 ---
 
-## GET `/api/v1/apps`
+## GET `/api/v1/app/list`
 
 返回所有微应用的当前状态。
 数据来源：VSOA/MS（**目前为 Mock**）。

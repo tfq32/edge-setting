@@ -2,6 +2,8 @@ github.com/acoinfo/logrus v1.9.3-sylixos.1 h1:IRM11W2vtRUVLuzzRg0UUIWGrakvYcNBaG
 github.com/acoinfo/logrus v1.9.3-sylixos.1/go.mod h1:ftWc9WdOfJ0a92nsE2jF5u5ZwH8Bv2zdeOC42RjbV2g=
 github.com/acoinfo/sys v0.35.0-sylixos.5 h1:wp/LSZ0WqSDCPkmEjXFdQ35nzdSiNF0WvERJTrYxifI=
 github.com/acoinfo/sys v0.35.0-sylixos.5/go.mod h1:OgkHotnGiDImocRcuBABYBEXf8A9a87e/uXjp9XT3ks=
+github.com/acoinfo/vsoa v1.1.10 h1:NRCXf33qgWyCxMM3j+vXz0IMLiRppRgvRO5GoRwYgDs=
+github.com/acoinfo/vsoa v1.1.10/go.mod h1:xQ9XpR9YTGXJXroWOXjtUFuI84yaK07SVNUS8c/l7R8=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/gorilla/websocket v1.5.3 h1:saDtZ6Pbx/0u+bgYQ3q96pZgCzfhKXGPqt7kZ72aNNg=

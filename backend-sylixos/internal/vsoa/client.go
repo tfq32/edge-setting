@@ -2,10 +2,18 @@ package vsoa
 
 import (
 	"context"
-	"math/rand"
+	"encoding/json"
+	"fmt"
+	"log"
 	"sync"
 	"time"
+
+	vsoaClient "github.com/acoinfo/vsoa/client"
+	"github.com/acoinfo/vsoa/protocol"
 )
+
+// VSOA 接口路径前缀
+const apiPrefix = "/api/v1/edge_setting"
 
 // AppStatus 微应用状态
 type AppStatus string
@@ -16,7 +24,7 @@ const (
 	StatusError   AppStatus = "error"
 )
 
-// AppInfo 微应用信息（来自 MS，只读）
+// AppInfo 微应用信息
 type AppInfo struct {
 	ID        string    `json:"id"`
 	Name      string    `json:"name"`
@@ -32,7 +40,7 @@ type AppInfo struct {
 	WorkDir   string    `json:"work_dir"`
 }
 
-// MetricsSnapshot 系统指标快照（从 MS 获取）
+// MetricsSnapshot 系统指标快照
 type MetricsSnapshot struct {
 	Timestamp int64     `json:"ts"`
 	CPU       float64   `json:"cpu"`
@@ -53,7 +61,7 @@ type MetricsSnapshot struct {
 	Uptime    uint64    `json:"uptime"`
 }
 
-// SystemInfo 系统信息（从 MS 获取）
+// SystemInfo 系统信息
 type SystemInfo struct {
 	Hostname        string `json:"hostname"`
 	Arch            string `json:"arch"`
@@ -64,117 +72,145 @@ type SystemInfo struct {
 	UptimeSystem    uint64 `json:"uptime_system"`
 }
 
-// Client VSOA 客户端（目前为 Mock 实现，接入真实 MS 后替换）
+// Client VSOA 客户端
 type Client struct {
-	mu     sync.RWMutex
-	apps   map[string]*AppInfo
-	stopCh chan struct{}
+	mu        sync.RWMutex
+	cli       *vsoaClient.Client
+	addr      string
+	connected bool
+	stopCh    chan struct{}
 }
 
-// New 创建 VSOA 客户端并连接
-func New(_ string) (*Client, error) {
+// New 创建 VSOA 客户端并连接到 MS
+func New(addr string) (*Client, error) {
 	c := &Client{
-		apps:   make(map[string]*AppInfo),
+		addr:   addr,
 		stopCh: make(chan struct{}),
 	}
-	c.seedMockApps()
-	go c.simulateChanges()
+
+	if err := c.connect(); err != nil {
+		log.Printf("VSOA 初始连接失败: %v，将后台重连", err)
+		go c.reconnectLoop()
+	}
+
 	return c, nil
 }
 
-func (c *Client) seedMockApps() {
-	now := time.Now().UnixMilli()
-	for _, app := range []*AppInfo{
-		{ID: "edge-setting", Name: "Edge Setting", Type: "system", HasUI: true, Status: StatusRunning, PID: 1001, CPU: 0.3, Mem: 29360128, Port: []int{8080}, Version: "v2.0.0", StartTime: now - 86400000, WorkDir: "/opt/edge-setting"},
-		{ID: "data-collector", Name: "数据采集服务", Type: "system", HasUI: false, Status: StatusRunning, PID: 1002, CPU: 2.1, Mem: 67108864, Port: []int{9100}, Version: "v1.3.2", StartTime: now - 86400000, WorkDir: "/opt/data-collector"},
-		{ID: "modbus-gateway", Name: "Modbus 网关", Type: "user", HasUI: false, Status: StatusRunning, PID: 1003, CPU: 1.2, Mem: 47185920, Port: []int{502}, Version: "v1.1.0", StartTime: now - 3600000, WorkDir: "/opt/modbus-gw"},
-		{ID: "rtsp-proxy", Name: "RTSP 视频代理", Type: "user", HasUI: false, Status: StatusStopped, PID: 0, CPU: 0, Mem: 0, Port: []int{554}, Version: "v1.0.3", StartTime: 0, WorkDir: "/opt/rtsp-proxy"},
-		{ID: "ota-agent", Name: "OTA 升级代理", Type: "system", HasUI: false, Status: StatusRunning, PID: 1004, CPU: 0.1, Mem: 15728640, Port: []int{9200}, Version: "v0.8.1", StartTime: now - 86400000, WorkDir: "/opt/ota-agent"},
-	} {
-		c.apps[app.ID] = app
+func (c *Client) connect() error {
+	cli := vsoaClient.NewClient(vsoaClient.DefaultOption)
+	if _, err := cli.Connect("tcp", c.addr); err != nil {
+		return err
 	}
+	c.mu.Lock()
+	c.cli = cli
+	c.connected = true
+	c.mu.Unlock()
+	log.Printf("VSOA 已连接: %s", c.addr)
+	return nil
 }
 
-// simulateChanges CPU / 内存小幅随机漂移
-func (c *Client) simulateChanges() {
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
+func (c *Client) reconnectLoop() {
+	delays := []time.Duration{1, 2, 4, 8, 16, 30}
+	idx := 0
 	for {
 		select {
 		case <-c.stopCh:
 			return
-		case <-ticker.C:
-			c.mu.Lock()
-			for _, app := range c.apps {
-				if app.Status == StatusRunning {
-					app.CPU = round2(app.CPU + (rand.Float64()-0.5)*0.5)
-					if app.CPU < 0 {
-						app.CPU = 0
-					}
-					app.Mem += uint64(rand.Intn(102400))
-				}
+		default:
+		}
+		d := delays[idx] * time.Second
+		time.Sleep(d)
+		if err := c.connect(); err != nil {
+			log.Printf("VSOA 重连失败: %v，%v 后重试", err, d)
+			if idx < len(delays)-1 {
+				idx++
 			}
-			c.mu.Unlock()
+		} else {
+			return
 		}
 	}
 }
 
-// ListApps 查询所有微应用状态（只读）
-func (c *Client) ListApps(_ context.Context) ([]*AppInfo, error) {
+// rpcGet 发送 VSOA RPC GET 请求，返回 Param（JSON）
+func (c *Client) rpcGet(url string) (json.RawMessage, error) {
 	c.mu.RLock()
-	defer c.mu.RUnlock()
-	result := make([]*AppInfo, 0, len(c.apps))
-	for _, app := range c.apps {
-		cp := *app
-		result = append(result, &cp)
+	cli := c.cli
+	connected := c.connected
+	c.mu.RUnlock()
+
+	if !connected || cli == nil {
+		return nil, fmt.Errorf("VSOA 未连接")
 	}
-	return result, nil
+
+	req := protocol.NewMessage()
+	req.SetMessageType(protocol.TypeRPC)
+	req.SetMessageRpcMethod(protocol.RpcMethodGet)
+
+	reply, err := cli.Call(url, protocol.TypeRPC, protocol.RpcMethodGet, req)
+	if err != nil {
+		// 连接可能断开，触发重连
+		c.mu.Lock()
+		c.connected = false
+		c.mu.Unlock()
+		go c.reconnectLoop()
+		return nil, fmt.Errorf("VSOA RPC 调用失败: %w", err)
+	}
+
+	if reply.StatusType() != protocol.StatusSuccess {
+		return nil, fmt.Errorf("VSOA 返回错误状态: %s", reply.StatusTypeText())
+	}
+
+	return reply.Param, nil
 }
 
-// GetMetrics 从 MS 获取系统指标快照
-// TODO: 接入真实 VSOA RPC 调用，当前为 Mock
+// GetMetrics 从 MS 获取系统指标
+// VSOA RPC GET /api/v1/edge_setting/system/metrics
 func (c *Client) GetMetrics(_ context.Context) (*MetricsSnapshot, error) {
-	now := time.Now()
-	return &MetricsSnapshot{
-		Timestamp: now.UnixMilli(),
-		CPU:       round2(20 + rand.Float64()*60),
-		CPUCores:  []float64{round2(rand.Float64() * 100), round2(rand.Float64() * 100), round2(rand.Float64() * 100), round2(rand.Float64() * 100)},
-		MemUsed:   uint64(2+rand.Intn(4)) * 1024 * 1024 * 1024,
-		MemTotal:  8 * 1024 * 1024 * 1024,
-		MemPct:    round2(30 + rand.Float64()*40),
-		SwapUsed:  0,
-		SwapTotal: 0,
-		DiskPct:   round2(20 + rand.Float64()*30),
-		DiskRead:  uint64(rand.Intn(1024 * 1024)),
-		DiskWrite: uint64(rand.Intn(512 * 1024)),
-		NetIn:     uint64(rand.Intn(1024 * 1024)),
-		NetOut:    uint64(rand.Intn(512 * 1024)),
-		Load1:     round2(rand.Float64() * 4),
-		Load5:     round2(rand.Float64() * 3),
-		Load15:    round2(rand.Float64() * 2),
-		Uptime:    uint64(now.Unix()),
-	}, nil
+	data, err := c.rpcGet(apiPrefix + "/system/metrics")
+	if err != nil {
+		return nil, err
+	}
+	var snap MetricsSnapshot
+	if err := json.Unmarshal(data, &snap); err != nil {
+		return nil, fmt.Errorf("解析指标数据失败: %w", err)
+	}
+	return &snap, nil
 }
 
 // GetSystemInfo 从 MS 获取系统信息
-// TODO: 接入真实 VSOA RPC 调用，当前为 Mock
+// VSOA RPC GET /api/v1/edge_setting/system/info
 func (c *Client) GetSystemInfo(_ context.Context) (*SystemInfo, error) {
-	return &SystemInfo{
-		Hostname:        "sylixos-edge",
-		Arch:            "arm64",
-		OS:              "SylixOS",
-		Platform:        "SylixOS",
-		PlatformVersion: "3.6.5",
-		KernelVersion:   "SylixOS 3.6.5",
-		UptimeSystem:    uint64(time.Now().Unix()),
-	}, nil
+	data, err := c.rpcGet(apiPrefix + "/system/info")
+	if err != nil {
+		return nil, err
+	}
+	var info SystemInfo
+	if err := json.Unmarshal(data, &info); err != nil {
+		return nil, fmt.Errorf("解析系统信息失败: %w", err)
+	}
+	return &info, nil
+}
+
+// ListApps 从 MS 获取微应用列表
+// VSOA RPC GET /api/v1/edge_setting/app/list
+func (c *Client) ListApps(_ context.Context) ([]*AppInfo, error) {
+	data, err := c.rpcGet(apiPrefix + "/app/list")
+	if err != nil {
+		return nil, err
+	}
+	var apps []*AppInfo
+	if err := json.Unmarshal(data, &apps); err != nil {
+		return nil, fmt.Errorf("解析应用列表失败: %w", err)
+	}
+	return apps, nil
 }
 
 // Close 关闭客户端
 func (c *Client) Close() {
 	close(c.stopCh)
-}
-
-func round2(f float64) float64 {
-	return float64(int(f*100)) / 100
+	c.mu.Lock()
+	if c.cli != nil {
+		c.cli.Close()
+	}
+	c.mu.Unlock()
 }

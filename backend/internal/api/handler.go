@@ -26,7 +26,7 @@ type Handler struct {
 
 // ── 健康检查 ──────────────────────────────────────────────
 func (h *Handler) Health(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"status": "ok", "ts": time.Now().UnixMilli()})
+	c.JSON(http.StatusOK, gin.H{"code": 0})
 }
 
 // ── 系统信息 ──────────────────────────────────────────────

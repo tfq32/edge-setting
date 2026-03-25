@@ -17,7 +17,7 @@ func SetupRouter(h *Handler) http.Handler {
 	router.GET("/api/v1/system/metrics", h.MetricsSnapshot)
 	router.GET("/api/v1/system/metrics/ws", h.MetricsWS)
 	router.GET("/api/v1/metrics/history", h.MetricsHistory)
-	router.GET("/api/v1/apps", h.AppList)
+	router.GET("/api/v1/app/list", h.AppList)
 
 	// 包装 CORS 和日志中间件
 	return chainMiddleware(router, corsMiddleware, loggerMiddleware, recoveryMiddleware)
