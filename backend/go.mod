@@ -1,8 +1,9 @@
 module github.com/edge-setting/backend
 
-go 1.21
+go 1.24
 
 require (
+	github.com/acoinfo/vsoa v1.1.10
 	github.com/gin-gonic/gin v1.9.1
 	github.com/gorilla/websocket v1.5.1
 	github.com/shirou/gopsutil/v3 v3.23.12
